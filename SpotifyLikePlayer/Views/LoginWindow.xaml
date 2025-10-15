@@ -1,0 +1,20 @@
+﻿<Window x:Class="SpotifyLikePlayer.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:SpotifyLikePlayer"
+		xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        mc:Ignorable="d"
+		Style="{StaticResource MaterialDesignWindow}"
+        Title="Login" Height="300" Width="400" WindowStartupLocation="CenterScreen">
+    <Grid>
+		<StackPanel Margin="20">
+			<TextBox x:Name="UsernameTxt" materialDesign:HintAssist.Hint="Username" />
+			<PasswordBox x:Name="PasswordTxt" materialDesign:HintAssist.Hint="Password" />
+			<Button Content="Login" Click="Login_Click" />
+			<Button Content="Register" Click="OpenRegister_Click" />
+			<Button Content="Forgot password?" Click="ForgotPassword_Click" />
+		</StackPanel>
+	</Grid>
+</Window>
