@@ -32,8 +32,9 @@ namespace SpotifyLikePlayer
             string username = UsernameTxt.Text;
             string password = PasswordTxt.Password;
 
-            if (password.Length < 5)
+            if (string.IsNullOrEmpty(password) || password.Length < 5)
             {
+                ErrorMessage.Text = "Пароль должен содержать минимум 5 символов.";
                 return;
             }
 
@@ -42,6 +43,10 @@ namespace SpotifyLikePlayer
             {
                 new MainWindow(_vm).Show();
                 this.Close();
+            }
+            else
+            {
+                ErrorMessage.Text = "Неверный логин или пароль.";
             }
         }
 
@@ -60,6 +65,11 @@ namespace SpotifyLikePlayer
         private void ForgotPassword_Click(object sender, RoutedEventArgs e)
         {
             new ForgotPasswordWindow(_vm).ShowDialog(); // Открываем окно сброса пароля
+        }
+
+        private void ClearErrorMessage(object sender, RoutedEventArgs e)
+        {
+            ErrorMessage.Text = "";  // Очищаем сообщение при вводе
         }
     }
 }

@@ -10,6 +10,10 @@ using System.Collections.ObjectModel;
 using BCrypt.Net;
 using Microsoft.IdentityModel.Protocols;
 using SpotifyLikePlayer.Models;
+using TagLib;
+using System.Windows;
+using System.IO;
+using System.Windows.Media.Imaging;
 
 namespace SpotifyLikePlayer.Services
 {
@@ -139,7 +143,7 @@ namespace SpotifyLikePlayer.Services
                                 duration = TimeSpan.Zero; // Если NULL, устанавливаем 0
                             }
 
-                            songs.Add(new Song
+                            var song = new Song
                             {
                                 SongId = (int)reader["SongId"],
                                 Title = reader["Title"].ToString(),
@@ -150,7 +154,9 @@ namespace SpotifyLikePlayer.Services
                                 Artist = new Artist { ArtistId = (int)reader["ArtistId"], Name = reader["ArtistName"].ToString() },
                                 AlbumId = (int)reader["AlbumId"],
                                 Album = new Album { AlbumId = (int)reader["AlbumId"], Title = reader["AlbumTitle"].ToString(), ReleaseYear = (int)reader["ReleaseYear"] }
-                            });
+                            };
+                            song.CoverImage = GetCoverImage(song.FilePath);  // обложка
+                            songs.Add(song);
                         }
                     }
                 }
@@ -221,7 +227,7 @@ namespace SpotifyLikePlayer.Services
                                 duration = TimeSpan.Zero;
                             }
 
-                            songs.Add(new Song
+                            var song = new Song
                             {
                                 SongId = (int)reader["SongId"],
                                 Title = reader["Title"].ToString(),
@@ -232,7 +238,9 @@ namespace SpotifyLikePlayer.Services
                                 Artist = new Artist { ArtistId = (int)reader["ArtistId"], Name = reader["ArtistName"].ToString() },
                                 AlbumId = (int)reader["AlbumId"],
                                 Album = new Album { AlbumId = (int)reader["AlbumId"], Title = reader["AlbumTitle"].ToString(), ReleaseYear = (int)reader["ReleaseYear"] }
-                            });
+                            };
+                            song.CoverImage = GetCoverImage(song.FilePath);  // обложка
+                            songs.Add(song);
                         }
                     }
                 }
@@ -308,7 +316,7 @@ namespace SpotifyLikePlayer.Services
                 conn.Open();
                 string query = @"
             INSERT INTO Songs (Title, ArtistId, AlbumId, FilePath, Duration, Genre)
-            VALUES (@Title, @ArtistId, @AlbumId, @FilePath, @Duration, @Genre, @CoverImagePath)";
+            VALUES (@Title, @ArtistId, @AlbumId, @FilePath, @Duration, @Genre)";
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@Title", song.Title);
@@ -317,10 +325,46 @@ namespace SpotifyLikePlayer.Services
                     cmd.Parameters.AddWithValue("@FilePath", song.FilePath);
                     cmd.Parameters.AddWithValue("@Duration",song.Duration.ToString("mm\\:ss"));  // TimeSpan как time
                     cmd.Parameters.AddWithValue("@Genre", song.Genre);
-                    cmd.Parameters.AddWithValue("@CoverImagePath", (string.IsNullOrEmpty(song.CoverImagePath) ? (object)DBNull.Value : song.CoverImagePath));
                     cmd.ExecuteNonQuery();
                 }
             }
+        }
+
+        public BitmapImage GetCoverImage(string filePath)
+        {
+            if (!System.IO.File.Exists(filePath)) return GetDefaultCover();  // Дефолт, если файл не найден
+
+            try
+            {
+                using (var tagFile = TagLib.File.Create(filePath))
+                {
+                    if (tagFile.Tag.Pictures.Length > 0)
+                    {
+                        var picture = tagFile.Tag.Pictures[0];
+                        using (var stream = new MemoryStream(picture.Data.Data))
+                        {
+                            var image = new BitmapImage();
+                            image.BeginInit();
+                            image.CacheOption = BitmapCacheOption.OnLoad;
+                            image.StreamSource = stream;
+                            image.EndInit();
+                            image.Freeze();  // Для thread-safety в WPF
+                            return image;
+                        }
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // Ошибка, вернём дефолт
+            }
+            return GetDefaultCover();
+        }
+
+        public BitmapImage GetDefaultCover()
+        {
+            var defaultImage = new BitmapImage(new Uri("C:\\Users\\dobry\\source\\repos\\SpotifyLikePlayer\\SpotifyLikePlayer\\music.png"));  // Путь к ресурсу
+            return defaultImage;
         }
     }
 }

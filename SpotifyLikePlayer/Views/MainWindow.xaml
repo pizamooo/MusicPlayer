@@ -4,10 +4,12 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:SpotifyLikePlayer"
-		xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes" xmlns:converters="clr-namespace:SpotifyLikePlayer.Converters"
-		mc:Ignorable="d"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:converters="clr-namespace:SpotifyLikePlayer.Converters"
+        mc:Ignorable="d"
         Title="Player" Height="600" Width="860"
-		DataContext="{Binding RelativeSource={RelativeSource Self}, Path=ViewModel}" WindowStartupLocation="CenterScreen">
+        DataContext="{Binding RelativeSource={RelativeSource Self}, Path=ViewModel}"
+        WindowStartupLocation="CenterScreen">
 	<Window.Resources>
 		<converters:SecondsToTimeConverter x:Key="SecondsToTimeConverter" />
 	</Window.Resources>
@@ -19,22 +21,35 @@
 			<!-- Main content -->
 		</Grid.ColumnDefinitions>
 		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto" />
+			<!-- Информация о текущей песне -->
 			<RowDefinition Height="*" />
+			<!-- Поиск и список песен -->
 			<RowDefinition Height="80" />
 			<!-- Player controls -->
 		</Grid.RowDefinitions>
 
+		<!-- Информация о текущей песне (выше) -->
+		<StackPanel Grid.Row="0" Grid.ColumnSpan="2" Orientation="Horizontal" 
+                    VerticalAlignment="Center" Background="#1E1E1E" Margin="0">
+			<Image Source="{Binding PlayerService.CurrentSong.CoverImage}" Width="80" Height="80" Stretch="UniformToFill" Margin="0,0,10,0"/>
+			<StackPanel Orientation="Vertical">
+				<TextBlock Text="{Binding PlayerService.CurrentSong.Title}" Foreground="White" FontWeight="Bold" FontSize="16"/>
+				<TextBlock Text="{Binding PlayerService.CurrentSong.Artist.Name}" Foreground="LimeGreen" FontSize="14" FontWeight="SemiBold"/>
+				<TextBlock Text="{Binding PlayerService.CurrentSong.Album.Title}" Foreground="LimeGreen" FontSize="12"/>
+			</StackPanel>
+		</StackPanel>
+
 		<!-- Sidebar: Navigation -->
-		<StackPanel Grid.Column="0" Background="#121212">
+		<StackPanel Grid.Column="0" Grid.Row="1" Background="#121212">
 			<Button Content="Home" Margin="5,5,5,5"/>
 			<Button Content="Your Library" Margin="5,5,5,5"/>
 			<ListBox ItemsSource="{Binding Playlists}" SelectedItem="{Binding SelectedPlaylist}" 
                      DisplayMemberPath="Name" Margin="5" SelectionChanged="Playlist_SelectionChanged" />
-			<!-- Bind to playlists -->
 		</StackPanel>
 
 		<!-- Main Content: Search + Song List -->
-		<Grid Grid.Column="1">
+		<Grid Grid.Column="1" Grid.Row="1">
 			<Grid.RowDefinitions>
 				<RowDefinition Height="50" />
 				<!-- Search bar height -->
@@ -49,33 +64,44 @@
                      VerticalAlignment="Top" />
 
 			<!-- Song List -->
-			<ListView Grid.Row="1" Margin="5" ItemsSource="{Binding Songs}" SelectedItem="{Binding SelectedSong}">
+			<ListView Grid.Row="1" ItemsSource="{Binding Songs}" SelectedItem="{Binding SelectedSong}" 
+                       Margin="10" Background="#121212" Foreground="White" FontSize="20">
+				<ListView.ItemContainerStyle>
+					<Style TargetType="ListViewItem">
+						<Setter Property="Background" Value="Transparent" />
+						<Setter Property="Foreground" Value="White" />
+						<Style.Triggers>
+							<Trigger Property="IsMouseOver" Value="True">
+								<Setter Property="Background" Value="#333333" />
+								<Setter Property="Foreground" Value="White" />
+							</Trigger>
+							<Trigger Property="IsSelected" Value="True">
+								<Setter Property="Background" Value="#444444" />
+							</Trigger>
+						</Style.Triggers>
+					</Style>
+				</ListView.ItemContainerStyle>
 				<ListView.View>
 					<GridView>
-						<GridViewColumn Header="">
+						<GridViewColumn Width="80">
 							<GridViewColumn.CellTemplate>
 								<DataTemplate>
-									<Image Source="{Binding CoverImagePath}" Width="40" Height="40" />
+									<Image Source="{Binding CoverImage}" Width="60" Height="60" Stretch="UniformToFill" />
 								</DataTemplate>
 							</GridViewColumn.CellTemplate>
 						</GridViewColumn>
-						<GridViewColumn Header="Title" DisplayMemberBinding="{Binding Title}" />
-						<GridViewColumn Header="Artist" DisplayMemberBinding="{Binding Artist.Name}" />
-						<GridViewColumn Header="Album" DisplayMemberBinding="{Binding Album.Title}" />
-						<GridViewColumn Header="Duration">
-							<GridViewColumn.CellTemplate>
-								<DataTemplate>
-									<materialDesign:PackIcon Kind="Clock" Width="16" Height="16" Foreground="White" />
-								</DataTemplate>
-							</GridViewColumn.CellTemplate>
-						</GridViewColumn>
+						<GridViewColumn Header="Title" DisplayMemberBinding="{Binding Title}" Width="200"/>
+						<GridViewColumn Header="Artist" DisplayMemberBinding="{Binding Artist.Name}" Width="250" />
+						<GridViewColumn Header="Album" DisplayMemberBinding="{Binding Album.Title}" Width="300" />
+						<GridViewColumn Header="Genre" DisplayMemberBinding="{Binding Genre}" Width="280" />
+						<GridViewColumn Header="Duration" DisplayMemberBinding="{Binding Duration, StringFormat={}{0:mm\\:ss}}" Width="150" />
 					</GridView>
 				</ListView.View>
 			</ListView>
 		</Grid>
 
 		<!-- Player Controls -->
-		<materialDesign:Card Grid.Row="1" Grid.ColumnSpan="2" Background="#181818">
+		<materialDesign:Card Grid.Row="2" Grid.ColumnSpan="2" Background="#181818">
 			<Grid>
 				<Grid.ColumnDefinitions>
 					<ColumnDefinition Width="Auto" />
@@ -85,21 +111,12 @@
 					<ColumnDefinition Width="Auto" />
 					<!-- Volume slider -->
 				</Grid.ColumnDefinitions>
-				
-				<!-- Song info -->
-				<StackPanel Grid.Column="0" Orientation="Vertical" Margin="10" VerticalAlignment="Center" MaxWidth="250">
-					<Image Source="{Binding PlayerService.CurrentSong.CoverImagePath}" Width="100" Height="100" Margin="0,0,0,10" />
-					<TextBlock Text="{Binding PlayerService.CurrentSong.Title}" Foreground="White" FontWeight="Bold" FontSize="18" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Cursor="" />
-					<TextBlock Text="{Binding PlayerService.CurrentSong.Artist.Name}" Foreground="LimeGreen" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" />
-					<TextBlock Text="{Binding PlayerService.CurrentSong.Album.Title}" Foreground="LimeGreen" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" />
-				</StackPanel>
 
 				<!-- Buttons and Progress Slider -->
 				<StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
 					<Button Command="{Binding PreviousCommand}" Margin="5">
 						<materialDesign:PackIcon Kind="SkipPrevious" Width="24" Height="24" Foreground="White" />
 					</Button>
-					<!-- Единая кнопка Play/Pause с триггером для смены иконки -->
 					<Button Command="{Binding TogglePlayPauseCommand}" Margin="5">
 						<Button.Style>
 							<Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
@@ -123,17 +140,14 @@
 					<Button Command="{Binding NextCommand}" Margin="5">
 						<materialDesign:PackIcon Kind="SkipNext" Width="24" Height="24" Foreground="White" />
 					</Button>
-					<!-- Новое: Отсчёт времени (Position / Duration) -->
 					<TextBlock Margin="5" VerticalAlignment="Center" Foreground="White" FontSize="14">
 						<TextBlock.Text>
 							<MultiBinding Converter="{StaticResource SecondsToTimeConverter}">
-                                <Binding Path="PlayerService.PositionInSeconds" />
-                                <Binding Path="PlayerService.DurationInSeconds" />
-                            </MultiBinding>
+								<Binding Path="PlayerService.PositionInSeconds" />
+								<Binding Path="PlayerService.DurationInSeconds" />
+							</MultiBinding>
 						</TextBlock.Text>
 					</TextBlock>
-					
-					<!-- Progress Slider -->
 					<Slider x:Name="ProgressSlider" Value="{Binding PlayerService.PositionInSeconds, Mode=TwoWay}"
                             Minimum="0" Maximum="{Binding PlayerService.DurationInSeconds}"
                             Width="300" Margin="5" VerticalAlignment="Center" MouseMove="ProgressSlider_MouseMove"/>
@@ -141,7 +155,7 @@
 
 				<!-- Volume Slider (короткий, справа) -->
 				<StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="10">
-					<materialDesign:PackIcon Kind="VolumeHigh" VerticalAlignment="Center" Margin="5" Foreground="White" Width="20" Height="20" Cursor=""/>
+					<materialDesign:PackIcon Kind="VolumeHigh" VerticalAlignment="Center" Margin="5" Foreground="White" Width="20" Height="20" />
 					<Slider Value="{Binding PlayerService.Volume, Mode=TwoWay}" 
                             Minimum="0" Maximum="1" 
                             Width="100" Margin="5" VerticalAlignment="Center"/>

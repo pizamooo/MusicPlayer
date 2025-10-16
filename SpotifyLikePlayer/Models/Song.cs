@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using System.Windows.Media.Imaging;
+
 namespace SpotifyLikePlayer.Models
 {
     public class Song
@@ -15,7 +17,7 @@ namespace SpotifyLikePlayer.Models
         public string FilePath { get; set; }
         public TimeSpan Duration { get; set; }
         public string Genre { get; set; }
-        public string CoverImagePath { get; set; }
+        public BitmapImage CoverImage { get; set; }
 
 
         public Artist Artist { get; set; }

@@ -7,14 +7,28 @@
 		xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         mc:Ignorable="d"
 		Style="{StaticResource MaterialDesignWindow}"
-        Title="Login" Height="300" Width="400" WindowStartupLocation="CenterScreen">
-    <Grid>
-		<StackPanel Margin="20">
-			<TextBox x:Name="UsernameTxt" materialDesign:HintAssist.Hint="Username" />
-			<PasswordBox x:Name="PasswordTxt" materialDesign:HintAssist.Hint="Password" />
-			<Button Content="Login" Click="Login_Click" />
-			<Button Content="Register" Click="OpenRegister_Click" />
-			<Button Content="Forgot password?" Click="ForgotPassword_Click" />
-		</StackPanel>
+        Title="Login" Height="360" Width="300" WindowStartupLocation="CenterScreen" Cursor="">
+	<Grid Margin="20">
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="Auto"/>
+		</Grid.RowDefinitions>
+
+		<TextBox x:Name="UsernameTxt" Grid.Row="0" materialDesign:HintAssist.Hint="Username" 
+                 Margin="0,10" Foreground="White" Background="#282828" TextChanged="ClearErrorMessage"/>
+		<PasswordBox x:Name="PasswordTxt" Grid.Row="1" materialDesign:HintAssist.Hint="Password"
+                     Margin="0,10" Foreground="White" Background="#282828" PasswordChanged="ClearErrorMessage"/>
+		<TextBlock x:Name="ErrorMessage" Grid.Row="2" Foreground="Red" Margin="0,5" 
+                   Text="" TextWrapping="Wrap" FontSize="12"/>
+		<Button x:Name="LoginBtn" Grid.Row="3" Content="Login" Click="Login_Click" Margin="0,10" 
+                Background="#1DB954" Foreground="White"/>
+		<Button x:Name="OpenRegisterBtn" Grid.Row="4" Content="Register" Click="OpenRegister_Click" 
+                Margin="0,10" Background="#1DB954" Foreground="White"/>
+		<Button x:Name="ForgotPasswordBtn" Grid.Row="5" Content="Forgot Password" Click="ForgotPassword_Click" 
+                Margin="0,10" Background="#1DB954" Foreground="White"/>
 	</Grid>
 </Window>

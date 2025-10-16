@@ -12,6 +12,7 @@ using SpotifyLikePlayer.Services;
 using System.Windows;
 using System.IO;
 using TagLib;
+using MaterialDesignThemes.Wpf;
 
 namespace SpotifyLikePlayer.ViewModels
 {
@@ -49,13 +50,14 @@ namespace SpotifyLikePlayer.ViewModels
             bool success = _dbService.RegisterUser(username, password, email);
             if (success)
             {
-                // Можно автоматически войти после регистрации
                 CurrentUser = _dbService.Authenticate(username, password);
-                MessageBox.Show("Регистрация успешна! Вы вошли в систему.");
-            }
-            else
-            {
-                MessageBox.Show("Пользователь с таким именем или email уже существует.");
+                if (CurrentUser != null)
+                {
+                    Songs = _dbService.GetSongs();
+                    Playlists = _dbService.GetPlaylists(CurrentUser.UserId);
+                    OnPropertyChanged(nameof(Songs));
+                    OnPropertyChanged(nameof(Playlists));
+                }
             }
             return success;
         }
@@ -72,23 +74,24 @@ namespace SpotifyLikePlayer.ViewModels
 
                 AddSongsFromDirectory(DefaultMusicPath);
             }
-            else
-            {
-                MessageBox.Show("Неверный логин или пароль.");
-            }
         }
 
         public bool ResetPassword(string email, string newPassword)
         {
-            return _dbService.ResetPassword(email, newPassword);
+            bool success = _dbService.ResetPassword(email, newPassword);
+            return success;
         }
 
         private void PlaySelectedSong()
         {
             if (SelectedSong != null)
             {
+                if (!System.IO.File.Exists(SelectedSong.FilePath))
+                {
+                    return;
+                }
                 var playlistToUse = SelectedPlaylist != null ? _dbService.GetPlaylistSongs(SelectedPlaylist.PlaylistId) : Songs;
-                int songIndex = playlistToUse.IndexOf(SelectedSong);
+                int songIndex = playlistToUse.ToList().FindIndex(s => s.SongId == SelectedSong.SongId);
                 _playerService.Play(SelectedSong, playlistToUse, songIndex);
             }
         }
@@ -102,8 +105,12 @@ namespace SpotifyLikePlayer.ViewModels
             else if (SelectedSong != null || _playerService.CurrentSong != null)
             {
                 var currentOrSelected = _playerService.CurrentSong ?? SelectedSong;
+                if (!System.IO.File.Exists(currentOrSelected.FilePath))
+                {
+                    return;
+                }
                 var playlistToUse = SelectedPlaylist != null ? _dbService.GetPlaylistSongs(SelectedPlaylist.PlaylistId) : Songs;
-                int songIndex = playlistToUse.IndexOf(currentOrSelected);
+                int songIndex = playlistToUse.ToList().FindIndex(s => s.SongId == currentOrSelected.SongId);
                 _playerService.Play(currentOrSelected, playlistToUse, songIndex);
             }
         }
@@ -150,7 +157,6 @@ namespace SpotifyLikePlayer.ViewModels
         {
             if (!Directory.Exists(directoryPath))
             {
-                MessageBox.Show($"Директория не найдена: {directoryPath}");
                 return;
             }
 
@@ -189,14 +195,14 @@ namespace SpotifyLikePlayer.ViewModels
                             Duration = tagFile.Properties.Duration,
                             Genre = tags.Genres.FirstOrDefault() ?? "Unknown"
                         };
-
+                        song.CoverImage = _dbService.GetCoverImage(file);
                         _dbService.AddSong(song);
                         Songs.Add(song);
                     }
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Ошибка при обработке {file}: {ex.Message}");
+                    
                 }
             }
             OnPropertyChanged(nameof(Songs));

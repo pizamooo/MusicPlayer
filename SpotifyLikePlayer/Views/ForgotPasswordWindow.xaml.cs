@@ -37,29 +37,26 @@ namespace SpotifyLikePlayer.Views
             // Проверки
             if (!IsValidEmail(email))
             {
-                MessageBox.Show("Неверный формат email.");
-                return;
+                ErrorMessage.Text = "Неверный формат email."; return;
             }
             if (newPassword.Length < 5)
             {
-                MessageBox.Show("Новый пароль должен быть минимум 5 символов.");
-                return;
+                ErrorMessage.Text = "Новый пароль должен быть минимум 5 символов."; return;
             }
             if (newPassword != confirmPassword)
             {
-                MessageBox.Show("Пароли не совпадают.");
-                return;
+                ErrorMessage.Text = "Пароли не совпадают."; return;
             }
 
             bool success = _vm.ResetPassword(email, newPassword);
             if (success)
             {
-                MessageBox.Show("Пароль успешно сброшен! Теперь войдите.");
+                ErrorMessage.Text = "Пароль успешно сброшен! Теперь войдите.";
                 this.Close();
             }
             else
             {
-                MessageBox.Show("Пользователь с таким email не найден.");
+                ErrorMessage.Text = "Пользователь с таким email не найден.";
             }
         }
 
@@ -67,6 +64,11 @@ namespace SpotifyLikePlayer.Views
         {
             var regex = new Regex(@"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$");
             return regex.IsMatch(email);
+        }
+
+        private void ClearErrorMessage(object sender, RoutedEventArgs e)
+        {
+            ErrorMessage.Text = "";
         }
     }
 }
