@@ -13,6 +13,7 @@ using System.Windows;
 using System.IO;
 using TagLib;
 using MaterialDesignThemes.Wpf;
+using System.Windows.Threading;
 
 namespace SpotifyLikePlayer.ViewModels
 {
@@ -41,7 +42,7 @@ namespace SpotifyLikePlayer.ViewModels
             PlayCommand = new RelayCommand(o => PlaySelectedSong());
             PauseCommand = new RelayCommand(o => _playerService.Pause());
             NextCommand = new RelayCommand(o => _playerService.PlayNext());
-            PreviousCommand = new RelayCommand(o => _playerService.PlayPrevious());
+            PreviousCommand = new RelayCommand(o => HandlePrevious());
             TogglePlayPauseCommand = new RelayCommand(o => TogglePlayPause());
         }
 
@@ -102,7 +103,11 @@ namespace SpotifyLikePlayer.ViewModels
             {
                 _playerService.Pause();
             }
-            else if (SelectedSong != null || _playerService.CurrentSong != null)
+            else if (_playerService.CurrentSong != null && _playerService.IsPaused)
+            {
+                _playerService.Resume(); // Продолжаем с текущей позиции
+            }
+            else if (SelectedSong != null)
             {
                 var currentOrSelected = _playerService.CurrentSong ?? SelectedSong;
                 if (!System.IO.File.Exists(currentOrSelected.FilePath))
@@ -112,6 +117,21 @@ namespace SpotifyLikePlayer.ViewModels
                 var playlistToUse = SelectedPlaylist != null ? _dbService.GetPlaylistSongs(SelectedPlaylist.PlaylistId) : Songs;
                 int songIndex = playlistToUse.ToList().FindIndex(s => s.SongId == currentOrSelected.SongId);
                 _playerService.Play(currentOrSelected, playlistToUse, songIndex);
+            }
+        }
+
+        private void HandlePrevious()
+        {
+            if (_playerService.PositionInSeconds < 10 && _playerService.CurrentIndex > 0)
+            {
+                // Переключение на предыдущий трек, если позиция < 10 сек
+                _playerService.PlayPrevious();
+            }
+            else if (_playerService.CurrentSong != null)
+            {
+                // Перезапуск текущего трека, если позиция >= 10 сек
+                _playerService.PositionInSeconds = 0;
+                _playerService.Play(_playerService.CurrentSong, _playerService.Playlist, _playerService.CurrentIndex);
             }
         }
 
@@ -202,7 +222,7 @@ namespace SpotifyLikePlayer.ViewModels
                 }
                 catch (Exception ex)
                 {
-                    
+                    MessageBox.Show($"Ошибка при обработке {file}: {ex.Message}");
                 }
             }
             OnPropertyChanged(nameof(Songs));

@@ -19,6 +19,7 @@ namespace SpotifyLikePlayer.Services
         private ObservableCollection<Song> _playlist;
         private int _currentIndex;
         private bool _isPlaying;
+        private bool _isPaused;
         private double _positionInSeconds;
         private double _volume = 0.5;
 
@@ -45,17 +46,40 @@ namespace SpotifyLikePlayer.Services
             _playlist = playlist;
             _currentIndex = index;
             _mediaPlayer.Open(new Uri(song.FilePath));
+            _mediaPlayer.Position = TimeSpan.FromSeconds(0); // Сбрасываем на начало
             _mediaPlayer.Play();
             _isPlaying = true;
+            _isPaused = false;
+            _positionInSeconds = 0;
             OnPropertyChanged(nameof(CurrentSong));
             OnPropertyChanged(nameof(IsPlaying));
+            OnPropertyChanged(nameof(IsPaused));
         }
 
         public void Pause()
         {
-            _mediaPlayer.Pause();
-            _isPlaying = false;
-            OnPropertyChanged(nameof(IsPlaying));
+            if (_isPlaying)
+            {
+                _positionInSeconds = _mediaPlayer.Position.TotalSeconds;
+                _mediaPlayer.Pause();
+                _isPlaying = false;
+                _isPaused = true;
+                OnPropertyChanged(nameof(IsPlaying));
+                OnPropertyChanged(nameof(IsPaused));
+            }
+        }
+
+        public void Resume()
+        {
+            if (_isPaused && _mediaPlayer.Source != null)
+            {
+                _mediaPlayer.Position = TimeSpan.FromSeconds(_positionInSeconds);
+                _mediaPlayer.Play();
+                _isPlaying = true;
+                _isPaused = false;
+                OnPropertyChanged(nameof(IsPlaying));
+                OnPropertyChanged(nameof(IsPaused));
+            }
         }
 
         public void PlayNext()
@@ -78,6 +102,7 @@ namespace SpotifyLikePlayer.Services
 
         public Song CurrentSong => _playlist?[_currentIndex];
         public bool IsPlaying => _isPlaying;
+        public bool IsPaused => _isPaused;
         public double PositionInSeconds
         {
             get => _positionInSeconds;
@@ -102,6 +127,9 @@ namespace SpotifyLikePlayer.Services
                 OnPropertyChanged(nameof(Volume));
             }
         }
+
+        public ObservableCollection<Song> Playlist => _playlist;
+        public int CurrentIndex => _currentIndex;
 
         protected void OnPropertyChanged(string propertyName)
         {
