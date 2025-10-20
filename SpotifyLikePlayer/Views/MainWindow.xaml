@@ -100,9 +100,9 @@
 
 		<!-- Main Content: Song List -->
 		<Grid Grid.Column="1" Grid.Row="1">
-			<ListView ItemsSource="{Binding Songs}" SelectedItem="{Binding SelectedSong}" 
+			<ListView x:Name="SongsListView" ItemsSource="{Binding Songs}" SelectedItem="{Binding SelectedSong}" 
                       Margin="10" Background="#121212" Foreground="White" 
-                      HorizontalAlignment="Stretch" MinWidth="600" FontSize="20">
+                      HorizontalAlignment="Stretch" MinWidth="600" FontSize="20" MouseDoubleClick="SongsListView_MouseDoubleClick">
 				<ListView.ItemContainerStyle>
 					<Style TargetType="ListViewItem">
 						<Setter Property="Background" Value="Transparent" />
@@ -192,6 +192,8 @@
 
 				<!-- Volume Slider (короткий, справа) -->
 				<StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="10">
+					<TextBlock Text="{Binding PlayerService.Volume, StringFormat={}{0:P0}, UpdateSourceTrigger=PropertyChanged}" 
+                       Foreground="White" VerticalAlignment="Center" Margin="5,0" MinWidth="30"/>
 					<materialDesign:PackIcon Kind="VolumeHigh" VerticalAlignment="Center" Margin="5" Foreground="White" Width="20" Height="20" />
 					<Slider Value="{Binding PlayerService.Volume, Mode=TwoWay}" 
                             Minimum="0" Maximum="1" 

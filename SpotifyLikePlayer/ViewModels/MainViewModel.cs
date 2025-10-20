@@ -19,7 +19,7 @@ namespace SpotifyLikePlayer.ViewModels
 {
     public class MainViewModel
     {
-        private DatabaseService _dbService = new DatabaseService();
+        public DatabaseService _dbService = new DatabaseService();
         public MediaPlayerService _playerService = new MediaPlayerService();
         private const string DefaultMusicPath = @"C:\Users\dobry\OneDrive\Documents\MusicForProject";  // путь песен
 

@@ -70,5 +70,16 @@ namespace SpotifyLikePlayer
                 ToolTipService.SetShowDuration(slider, 10000); // Показывать 10 секунд
             }
         }
+
+        private void SongsListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (SongsListView.SelectedItem is Song selectedSong)
+            {
+                var viewModel = (MainViewModel)DataContext;
+                var playlistToUse = viewModel.SelectedPlaylist != null ? viewModel._dbService.GetPlaylistSongs(viewModel.SelectedPlaylist.PlaylistId) : viewModel.Songs;
+                int songIndex = playlistToUse.ToList().FindIndex(s => s.SongId == selectedSong.SongId);
+                viewModel.PlayerService.Play(selectedSong, playlistToUse, songIndex);
+            }
+        }
     }
 }
