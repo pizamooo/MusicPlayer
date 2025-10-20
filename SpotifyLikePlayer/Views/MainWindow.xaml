@@ -93,15 +93,16 @@
 		<!-- Sidebar: Navigation -->
 		<StackPanel Grid.Column="0" Grid.Row="1" Background="#121212">
 			<Button Content="Home" Margin="5,5,5,5"/>
+			<Button Content="Your Library" Margin="5,5,5,5"/>
 			<ListBox ItemsSource="{Binding Playlists}" SelectedItem="{Binding SelectedPlaylist}" 
                      DisplayMemberPath="Name" Margin="5" SelectionChanged="Playlist_SelectionChanged" />
 		</StackPanel>
 
 		<!-- Main Content: Song List -->
 		<Grid Grid.Column="1" Grid.Row="1">
-			<ListView x:Name="SongsListView" ItemsSource="{Binding DisplayedSongs}" SelectedItem="{Binding SelectedSong}" 
+			<ListView ItemsSource="{Binding Songs}" SelectedItem="{Binding SelectedSong}" 
                       Margin="10" Background="#121212" Foreground="White" 
-                      HorizontalAlignment="Stretch" MinWidth="600" FontSize="20" MouseDoubleClick="SongsListView_MouseDoubleClick" Cursor="">
+                      HorizontalAlignment="Stretch" MinWidth="600" FontSize="20">
 				<ListView.ItemContainerStyle>
 					<Style TargetType="ListViewItem">
 						<Setter Property="Background" Value="Transparent" />
@@ -131,21 +132,6 @@
 						<GridViewColumn Header="Album" DisplayMemberBinding="{Binding Album.Title}" Width="300" />
 						<GridViewColumn Header="Genre" DisplayMemberBinding="{Binding Genre}" Width="250" />
 						<GridViewColumn Header="Duration" DisplayMemberBinding="{Binding Duration, StringFormat={}{0:mm\\:ss}}" Width="150"/>
-						<GridViewColumn Header="" Width="100">
-							<GridViewColumn.CellTemplate>
-								<DataTemplate>
-									<Button Command="{Binding RelativeSource={RelativeSource AncestorType={x:Type Window}}, Path=DataContext.AddToFavoriteCommand}" 
-                                    Background="Transparent" BorderThickness="0" Margin="5">
-										<materialDesign:PackIcon x:Name="FavoriteIcon" Kind="HeartOutline" Width="24" Height="24" Foreground="White" />
-									</Button>
-									<DataTemplate.Triggers>
-										<DataTrigger Binding="{Binding IsFavorite}" Value="True">
-											<Setter TargetName="FavoriteIcon" Property="Kind" Value="Heart" />
-										</DataTrigger>
-									</DataTemplate.Triggers>
-								</DataTemplate>
-							</GridViewColumn.CellTemplate>
-						</GridViewColumn>
 					</GridView>
 				</ListView.View>
 			</ListView>
@@ -206,8 +192,6 @@
 
 				<!-- Volume Slider (короткий, справа) -->
 				<StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="10">
-					<TextBlock Text="{Binding PlayerService.Volume, StringFormat={}{0:P0}, UpdateSourceTrigger=PropertyChanged}" 
-                       Foreground="White" VerticalAlignment="Center" Margin="5,0" MinWidth="30" />
 					<materialDesign:PackIcon Kind="VolumeHigh" VerticalAlignment="Center" Margin="5" Foreground="White" Width="20" Height="20" />
 					<Slider Value="{Binding PlayerService.Volume, Mode=TwoWay}" 
                             Minimum="0" Maximum="1" 

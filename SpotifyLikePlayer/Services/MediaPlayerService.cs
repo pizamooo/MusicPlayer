@@ -100,17 +100,7 @@ namespace SpotifyLikePlayer.Services
             }
         }
 
-        public Song CurrentSong
-        {
-            get
-            {
-                if (_playlist == null || _currentIndex < 0 || _currentIndex >= _playlist.Count)
-                {
-                    return null; // Возвращаем null, если плейлист неинициализирован или индекс вне диапазона
-                }
-                return _playlist[_currentIndex];
-            }
-        }
+        public Song CurrentSong => _playlist?[_currentIndex];
         public bool IsPlaying => _isPlaying;
         public bool IsPaused => _isPaused;
         public double PositionInSeconds

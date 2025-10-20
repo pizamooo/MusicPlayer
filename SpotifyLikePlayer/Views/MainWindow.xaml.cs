@@ -31,8 +31,8 @@ namespace SpotifyLikePlayer
             DataContext = ViewModel;
             InitializeComponent();
             ProgressSlider.MouseMove += ProgressSlider_MouseMove;
-            ToolTipService.SetInitialShowDelay(ProgressSlider, 0);
-            DataContext = new MainViewModel();
+            // Уменьшаем задержку появления ToolTip
+            ToolTipService.SetInitialShowDelay(ProgressSlider, 0); // Мгновенное появление
         }
 
         private void Search_TextChanged(object sender, TextChangedEventArgs e)
@@ -43,10 +43,10 @@ namespace SpotifyLikePlayer
 
         private void Playlist_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            var viewModel = (MainViewModel)DataContext;
-            if (viewModel.SelectedPlaylist != null)
+            var listBox = sender as ListBox;
+            if (listBox?.SelectedItem is Playlist selectedPlaylist)
             {
-                viewModel.LoadPlaylistSongs(viewModel.SelectedPlaylist);
+                ViewModel.LoadPlaylistSongs(selectedPlaylist);
             }
         }
 
@@ -68,17 +68,6 @@ namespace SpotifyLikePlayer
                 ToolTipService.SetVerticalOffset(slider, -30); // Смещение для видимости
                 ToolTipService.SetHorizontalOffset(slider, position.X - 20); // Следует за курсором
                 ToolTipService.SetShowDuration(slider, 10000); // Показывать 10 секунд
-            }
-        }
-
-        private void SongsListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
-        {
-            if (SongsListView.SelectedItem is Song selectedSong)
-            {
-                var viewModel = (MainViewModel)DataContext;
-                var playlistToUse = viewModel.SelectedPlaylist != null ? viewModel._dbService.GetPlaylistSongs(viewModel.SelectedPlaylist.PlaylistId) : viewModel.Songs;
-                int songIndex = playlistToUse.ToList().FindIndex(s => s.SongId == selectedSong.SongId);
-                viewModel.PlayerService.Play(selectedSong, playlistToUse, songIndex);
             }
         }
     }
