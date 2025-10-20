@@ -19,7 +19,7 @@ namespace SpotifyLikePlayer.ViewModels
 {
     public class MainViewModel
     {
-        private DatabaseService _dbService = new DatabaseService();
+        public DatabaseService _dbService = new DatabaseService();
         public MediaPlayerService _playerService = new MediaPlayerService();
         private const string DefaultMusicPath = @"C:\Users\dobry\OneDrive\Documents\MusicForProject";  // путь песен
 
@@ -27,15 +27,19 @@ namespace SpotifyLikePlayer.ViewModels
 
         public ObservableCollection<Song> Songs { get; set; } = new ObservableCollection<Song>();
         public ObservableCollection<Playlist> Playlists { get; set; } = new ObservableCollection<Playlist>();
+        public ObservableCollection<Song> DisplayedSongs { get; set; } = new ObservableCollection<Song>(); // Новая коллекция для отображения
         public Song SelectedSong { get; set; }
         public Playlist SelectedPlaylist { get; set; }
-        public User CurrentUser { get; set; }
+        public User CurrentUser { get; set; } = new User { UserId = 1 };
+        private Playlist _favoritePlaylist;
 
         public ICommand PlayCommand { get; }
         public ICommand PauseCommand { get; }
         public ICommand NextCommand { get; }
         public ICommand PreviousCommand { get; }
         public ICommand TogglePlayPauseCommand { get; }
+        public ICommand AddToFavoriteCommand { get; }
+        public ICommand HomeCommand { get; }
 
         public MainViewModel()
         {
@@ -44,6 +48,71 @@ namespace SpotifyLikePlayer.ViewModels
             NextCommand = new RelayCommand(o => _playerService.PlayNext());
             PreviousCommand = new RelayCommand(o => HandlePrevious());
             TogglePlayPauseCommand = new RelayCommand(o => TogglePlayPause());
+            AddToFavoriteCommand = new RelayCommand(o => AddToFavorite(), o => SelectedSong != null);
+            HomeCommand = new RelayCommand(o => ShowHome());
+            LoadInitialData();
+        }
+
+        private void LoadInitialData()
+        {
+            if (CurrentUser == null)
+            {
+                CurrentUser = new User { UserId = 1 }; // Дефолтный пользователь, если не задан
+            }
+            try
+            {
+                Playlists = _dbService.GetPlaylists(CurrentUser.UserId) ?? new ObservableCollection<Playlist>();
+                Songs = _dbService.GetSongs() ?? new ObservableCollection<Song>();
+                DisplayedSongs = Songs; // По умолчанию показываем все песни
+                OnPropertyChanged(nameof(Playlists));
+                OnPropertyChanged(nameof(Songs));
+                OnPropertyChanged(nameof(DisplayedSongs));
+            }
+            catch (Exception ex)
+            {
+                // Логирование ошибки (например, Console.WriteLine(ex.Message))
+                Playlists = new ObservableCollection<Playlist>();
+                Songs = new ObservableCollection<Song>();
+                DisplayedSongs = new ObservableCollection<Song>();
+                OnPropertyChanged(nameof(Playlists));
+                OnPropertyChanged(nameof(Songs));
+                OnPropertyChanged(nameof(DisplayedSongs));
+            }
+        }
+
+        private void AddToFavorite()
+        {
+            if (SelectedSong != null)
+            {
+                if (_favoritePlaylist == null)
+                {
+                    _favoritePlaylist = _dbService.GetOrCreateFavoritePlaylist(CurrentUser.UserId);
+                }
+                if (_favoritePlaylist.Songs.Any(s => s.SongId == SelectedSong.SongId)) return;
+
+                _dbService.AddSongToPlaylist(_favoritePlaylist.PlaylistId, SelectedSong.SongId);
+                _favoritePlaylist.Songs = _dbService.GetPlaylistSongs(_favoritePlaylist.PlaylistId) ?? new ObservableCollection<Song>();
+                SelectedSong.IsFavorite = true;
+                OnPropertyChanged(nameof(Songs));
+
+                if (SelectedPlaylist != null && SelectedPlaylist.Name == "Любимое")
+                {
+                    LoadPlaylistSongs(SelectedPlaylist);
+                }
+            }
+        }
+
+        private void ShowHome()
+        {
+            SelectedPlaylist = null;
+            DisplayedSongs = Songs;
+            OnPropertyChanged(nameof(DisplayedSongs));
+        }
+
+        private void LoadPlaylists()
+        {
+            Playlists = _dbService.GetPlaylists(CurrentUser.UserId);
+            OnPropertyChanged(nameof(Playlists));
         }
 
         public bool Register(string username, string password, string email)
@@ -87,12 +156,9 @@ namespace SpotifyLikePlayer.ViewModels
         {
             if (SelectedSong != null)
             {
-                if (!System.IO.File.Exists(SelectedSong.FilePath))
-                {
-                    return;
-                }
-                var playlistToUse = SelectedPlaylist != null ? _dbService.GetPlaylistSongs(SelectedPlaylist.PlaylistId) : Songs;
-                int songIndex = playlistToUse.ToList().FindIndex(s => s.SongId == SelectedSong.SongId);
+                var playlistToUse = SelectedPlaylist != null ? _dbService.GetPlaylistSongs(SelectedPlaylist.PlaylistId) ?? new ObservableCollection<Song>() : Songs;
+                int songIndex = playlistToUse.IndexOf(SelectedSong);
+                if (songIndex < 0 && playlistToUse.Any()) songIndex = 0;
                 _playerService.Play(SelectedSong, playlistToUse, songIndex);
             }
         }
@@ -139,9 +205,8 @@ namespace SpotifyLikePlayer.ViewModels
         {
             if (playlist != null)
             {
-                SelectedPlaylist = playlist;
-                Songs = _dbService.GetPlaylistSongs(playlist.PlaylistId);
-                OnPropertyChanged(nameof(Songs));
+                DisplayedSongs = _dbService.GetPlaylistSongs(playlist.PlaylistId) ?? new ObservableCollection<Song>();
+                OnPropertyChanged(nameof(DisplayedSongs));
             }
         }
 
@@ -235,10 +300,15 @@ namespace SpotifyLikePlayer.ViewModels
         public class RelayCommand : ICommand
         {
             private Action<object> _execute;
-            public RelayCommand(Action<object> execute) => _execute = execute;
-            public bool CanExecute(object parameter) => true;
+            private Func<object, bool> _canExecute;
+            public RelayCommand(Action<object> execute, Func<object, bool> canExecute = null)
+            {
+                _execute = execute;
+                _canExecute = canExecute;
+            }
+            public bool CanExecute(object parameter) => _canExecute?.Invoke(parameter) ?? true;
             public void Execute(object parameter) => _execute(parameter);
-            public event EventHandler CanExecuteChanged;
+            public event EventHandler CanExecuteChanged { add { CommandManager.RequerySuggested += value; } remove { CommandManager.RequerySuggested -= value; } }
         }
     }
 }

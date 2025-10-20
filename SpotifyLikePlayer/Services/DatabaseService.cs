@@ -170,7 +170,7 @@ namespace SpotifyLikePlayer.Services
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
                 conn.Open();
-                string query = "SELECT PlaylistId, Name, CreatedDate FROM Playlists WHERE UserId = @UserId";
+                string query = "SELECT PlaylistId, Name, UserId, CreatedDate FROM Playlists WHERE UserId = @UserId";
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@UserId", userId);
@@ -180,10 +180,10 @@ namespace SpotifyLikePlayer.Services
                         {
                             playlists.Add(new Playlist
                             {
-                                PlaylistId = (int)reader["PlaylistId"],
-                                Name = reader["Name"].ToString(),
-                                UserId = userId,
-                                CreatedDate = (DateTime)reader["CreatedDate"]
+                                PlaylistId = reader.GetInt32(0),
+                                Name = reader.GetString(1),
+                                UserId = reader.GetInt32(2),
+                                CreatedDate = reader.GetDateTime(3)
                             });
                         }
                     }
@@ -199,16 +199,16 @@ namespace SpotifyLikePlayer.Services
             {
                 conn.Open();
                 string query = @"
-                    SELECT s.SongId, s.Title, s.FilePath, s.Duration, s.Genre,
-                           a.ArtistId, a.Name AS ArtistName,
-                           al.AlbumId, al.Title AS AlbumTitle, al.ReleaseYear,
-                           ps.Position
-                    FROM PlaylistSongs ps
-                    JOIN Songs s ON ps.SongId = s.SongId
-                    JOIN Artists a ON s.ArtistId = a.ArtistId
-                    JOIN Albums al ON s.AlbumId = al.AlbumId
-                    WHERE ps.PlaylistId = @PlaylistId
-                    ORDER BY CAST(ps.Position AS INT)";  // Если Position не int, убрать CAST
+                SELECT s.SongId, s.Title, s.FilePath, s.Duration, s.Genre, 
+                       a.ArtistId, a.Name AS ArtistName,
+                       al.AlbumId, al.Title AS AlbumTitle, al.ReleaseYear,
+                       ps.Position
+                FROM PlaylistSongs ps
+                JOIN Songs s ON ps.SongId = s.SongId
+                JOIN Artists a ON s.ArtistId = a.ArtistId
+                JOIN Albums al ON s.AlbumId = al.AlbumId
+                WHERE ps.PlaylistId = @PlaylistId
+                ORDER BY ps.Position";
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@PlaylistId", playlistId);
@@ -216,31 +216,19 @@ namespace SpotifyLikePlayer.Services
                     {
                         while (reader.Read())
                         {
-                            TimeSpan duration;
-                            int durationOrdinal = reader.GetOrdinal("Duration");
-                            if (!reader.IsDBNull(durationOrdinal))
+                            songs.Add(new Song
                             {
-                                duration = reader.GetTimeSpan(durationOrdinal);
-                            }
-                            else
-                            {
-                                duration = TimeSpan.Zero;
-                            }
-
-                            var song = new Song
-                            {
-                                SongId = (int)reader["SongId"],
-                                Title = reader["Title"].ToString(),
-                                FilePath = reader["FilePath"].ToString(),
-                                Duration = duration,
-                                Genre = reader["Genre"].ToString(),
-                                ArtistId = (int)reader["ArtistId"],
-                                Artist = new Artist { ArtistId = (int)reader["ArtistId"], Name = reader["ArtistName"].ToString() },
-                                AlbumId = (int)reader["AlbumId"],
-                                Album = new Album { AlbumId = (int)reader["AlbumId"], Title = reader["AlbumTitle"].ToString(), ReleaseYear = (int)reader["ReleaseYear"] }
-                            };
-                            song.CoverImage = GetCoverImage(song.FilePath);  // обложка
-                            songs.Add(song);
+                                SongId = reader.GetInt32(reader.GetOrdinal("SongId")),
+                                Title = reader.GetString(reader.GetOrdinal("Title")),
+                                FilePath = reader.GetString(reader.GetOrdinal("FilePath")),
+                                Duration = reader.GetTimeSpan(reader.GetOrdinal("Duration")),
+                                Genre = reader.IsDBNull(reader.GetOrdinal("Genre")) ? null : reader.GetString(reader.GetOrdinal("Genre")),
+                                ArtistId = reader.GetInt32(reader.GetOrdinal("ArtistId")),
+                                Artist = new Artist { ArtistId = reader.GetInt32(reader.GetOrdinal("ArtistId")), Name = reader.GetString(reader.GetOrdinal("ArtistName")) },
+                                AlbumId = reader.GetInt32(reader.GetOrdinal("AlbumId")),
+                                Album = new Album { AlbumId = reader.GetInt32(reader.GetOrdinal("AlbumId")), Title = reader.GetString(reader.GetOrdinal("AlbumTitle")), ReleaseYear = reader.GetInt32(reader.GetOrdinal("ReleaseYear")) },
+                                CoverImage = GetCoverImage(reader.GetString(reader.GetOrdinal("FilePath")))
+                            });
                         }
                     }
                 }
@@ -284,7 +272,7 @@ namespace SpotifyLikePlayer.Services
             }
         }
 
-        public int AddOrGetAlbum(string albumTitle, int artistId = 1, int releaseYear = 0)  // Добавь параметры если нужно
+        public int AddOrGetAlbum(string albumTitle, int artistId = 1, int releaseYear = 0)
         {
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
@@ -365,6 +353,78 @@ namespace SpotifyLikePlayer.Services
         {
             var defaultImage = new BitmapImage(new Uri("C:\\Users\\dobry\\source\\repos\\SpotifyLikePlayer\\SpotifyLikePlayer\\music.png"));  // Путь к ресурсу
             return defaultImage;
+        }
+
+        public Playlist GetOrCreateFavoritePlaylist(int userId)
+        {
+            Playlist favoritePlaylist = null;
+            using (SqlConnection conn = new SqlConnection(_connectionString))
+            {
+                conn.Open();
+                string query = "SELECT PlaylistId, Name, UserId, CreatedDate FROM Playlists WHERE Name = 'Любимое' AND UserId = @UserId";
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@UserId", userId);
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            favoritePlaylist = new Playlist
+                            {
+                                PlaylistId = reader.GetInt32(0),
+                                Name = reader.GetString(1),
+                                UserId = reader.GetInt32(2),
+                                CreatedDate = reader.GetDateTime(3)
+                            };
+                            favoritePlaylist.Songs = GetPlaylistSongs(favoritePlaylist.PlaylistId);
+                        }
+                    }
+                }
+
+                if (favoritePlaylist == null)
+                {
+                    string insertQuery = "INSERT INTO Playlists (Name, UserId, CreatedDate) OUTPUT INSERTED.PlaylistId VALUES ('Любимое', @UserId, GETDATE())";
+                    using (SqlCommand insertCmd = new SqlCommand(insertQuery, conn))
+                    {
+                        insertCmd.Parameters.AddWithValue("@UserId", userId);
+                        int newId = (int)insertCmd.ExecuteScalar();
+                        favoritePlaylist = new Playlist { PlaylistId = newId, Name = "Любимое", UserId = userId, CreatedDate = DateTime.Now };
+                    }
+                }
+            }
+            return favoritePlaylist;
+        }
+
+        public void AddSongToPlaylist(int playlistId, int songId)
+        {
+            using (SqlConnection conn = new SqlConnection(_connectionString))
+            {
+                conn.Open();
+                string checkQuery = "SELECT COUNT(*) FROM PlaylistSongs WHERE PlaylistId = @PlaylistId AND SongId = @SongId";
+                using (SqlCommand checkCmd = new SqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@PlaylistId", playlistId);
+                    checkCmd.Parameters.AddWithValue("@SongId", songId);
+                    int count = (int)checkCmd.ExecuteScalar();
+                    if (count > 0) return;
+                }
+
+                string getPositionQuery = "SELECT ISNULL(MAX(Position), 0) + 1 FROM PlaylistSongs WHERE PlaylistId = @PlaylistId";
+                using (SqlCommand getPosCmd = new SqlCommand(getPositionQuery, conn))
+                {
+                    getPosCmd.Parameters.AddWithValue("@PlaylistId", playlistId);
+                    int position = (int)getPosCmd.ExecuteScalar();
+
+                    string insertQuery = "INSERT INTO PlaylistSongs (PlaylistId, SongId, Position) VALUES (@PlaylistId, @SongId, @Position)";
+                    using (SqlCommand insertCmd = new SqlCommand(insertQuery, conn))
+                    {
+                        insertCmd.Parameters.AddWithValue("@PlaylistId", playlistId);
+                        insertCmd.Parameters.AddWithValue("@SongId", songId);
+                        insertCmd.Parameters.AddWithValue("@Position", position);
+                        insertCmd.ExecuteNonQuery();
+                    }
+                }
+            }
         }
     }
 }

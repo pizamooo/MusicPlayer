@@ -22,5 +22,6 @@ namespace SpotifyLikePlayer.Models
 
         public Artist Artist { get; set; }
         public Album Album { get; set; }
+        public bool IsFavorite { get; set; }
     }
 }
