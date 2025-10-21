@@ -92,10 +92,8 @@
 
 		<!-- Sidebar: Navigation -->
 		<StackPanel Grid.Column="0" Grid.Row="1" Background="#121212">
-			<Button Content="Home" Margin="5,5,5,5"/>
-			<Button Content="Your Library" Margin="5,5,5,5"/>
-			<ListBox ItemsSource="{Binding Playlists}" SelectedItem="{Binding SelectedPlaylist}" 
-                     DisplayMemberPath="Name" Margin="5" SelectionChanged="Playlist_SelectionChanged" />
+			<Button Content="Home" Margin="5,5,5,5" Command="{Binding HomeCommand}"/>
+			<Button Content="Favorite" Margin="5,5,5,5" Command="{Binding ShowFavoriteCommand}"/>
 		</StackPanel>
 
 		<!-- Main Content: Song List -->
@@ -132,6 +130,22 @@
 						<GridViewColumn Header="Album" DisplayMemberBinding="{Binding Album.Title}" Width="300" />
 						<GridViewColumn Header="Genre" DisplayMemberBinding="{Binding Genre}" Width="250" />
 						<GridViewColumn Header="Duration" DisplayMemberBinding="{Binding Duration, StringFormat={}{0:mm\\:ss}}" Width="150"/>
+						<GridViewColumn Width="150">
+							<GridViewColumn.Header>
+								<TextBlock VerticalAlignment="Center"/>
+							</GridViewColumn.Header>
+							<GridViewColumn.CellTemplate>
+								<DataTemplate>
+									<Button Content="★" 
+        Command="{Binding DataContext.AddToFavoritesCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+        CommandParameter="{Binding}"
+        ToolTip="Add or Remove from Favorites"
+        Style="{StaticResource MaterialDesignFlatButton}"
+        Foreground="Gold" 
+        FontSize="26" Width="70" Height="50" VerticalAlignment="Center"/>
+								</DataTemplate>
+							</GridViewColumn.CellTemplate>
+						</GridViewColumn>
 					</GridView>
 				</ListView.View>
 			</ListView>

@@ -19,7 +19,7 @@ namespace SpotifyLikePlayer.Services
 {
     public class DatabaseService
     {
-        private readonly string _connectionString = ConfigurationManager.ConnectionStrings["MusicDB"].ConnectionString;
+        public readonly string _connectionString = ConfigurationManager.ConnectionStrings["MusicDB"].ConnectionString;
 
         public User Authenticate(string username, string password)
         {
@@ -115,7 +115,7 @@ namespace SpotifyLikePlayer.Services
 
         public ObservableCollection<Song> GetSongs()
         {
-            ObservableCollection<Song> songs = new ObservableCollection<Song>();
+            var songs = new ObservableCollection<Song>();
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
                 conn.Open();
@@ -153,7 +153,7 @@ namespace SpotifyLikePlayer.Services
                                 ArtistId = (int)reader["ArtistId"],
                                 Artist = new Artist { ArtistId = (int)reader["ArtistId"], Name = reader["ArtistName"].ToString() },
                                 AlbumId = (int)reader["AlbumId"],
-                                Album = new Album { AlbumId = (int)reader["AlbumId"], Title = reader["AlbumTitle"].ToString(), ReleaseYear = (int)reader["ReleaseYear"] }
+                                Album = new Album { AlbumId = (int)reader["AlbumId"], Title = reader["AlbumTitle"].ToString(), ReleaseYear = (int)reader["ReleaseYear"] },
                             };
                             song.CoverImage = GetCoverImage(song.FilePath);  // обложка
                             songs.Add(song);
@@ -194,21 +194,22 @@ namespace SpotifyLikePlayer.Services
 
         public ObservableCollection<Song> GetPlaylistSongs(int playlistId)
         {
+            Console.WriteLine($"Запрос песен для плейлиста ID: {playlistId}");
             ObservableCollection<Song> songs = new ObservableCollection<Song>();
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
                 conn.Open();
                 string query = @"
-                    SELECT s.SongId, s.Title, s.FilePath, s.Duration, s.Genre,
-                           a.ArtistId, a.Name AS ArtistName,
-                           al.AlbumId, al.Title AS AlbumTitle, al.ReleaseYear,
-                           ps.Position
-                    FROM PlaylistSongs ps
-                    JOIN Songs s ON ps.SongId = s.SongId
-                    JOIN Artists a ON s.ArtistId = a.ArtistId
-                    JOIN Albums al ON s.AlbumId = al.AlbumId
-                    WHERE ps.PlaylistId = @PlaylistId
-                    ORDER BY CAST(ps.Position AS INT)";  // Если Position не int, убрать CAST
+            SELECT s.SongId, s.Title, s.FilePath, s.Duration, s.Genre,
+                   a.ArtistId, a.Name AS ArtistName,
+                   al.AlbumId, al.Title AS AlbumTitle, al.ReleaseYear,
+                   ps.Position
+            FROM PlaylistSongs ps
+            JOIN Songs s ON ps.SongId = s.SongId
+            JOIN Artists a ON s.ArtistId = a.ArtistId
+            JOIN Albums al ON s.AlbumId = al.AlbumId
+            WHERE ps.PlaylistId = @PlaylistId
+            ORDER BY CAST(ps.Position AS INT)";
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@PlaylistId", playlistId);
@@ -239,12 +240,13 @@ namespace SpotifyLikePlayer.Services
                                 AlbumId = (int)reader["AlbumId"],
                                 Album = new Album { AlbumId = (int)reader["AlbumId"], Title = reader["AlbumTitle"].ToString(), ReleaseYear = (int)reader["ReleaseYear"] }
                             };
-                            song.CoverImage = GetCoverImage(song.FilePath);  // обложка
+                            song.CoverImage = GetCoverImage(song.FilePath);
                             songs.Add(song);
                         }
                     }
                 }
             }
+            Console.WriteLine($"Загружено песен: {songs.Count}");
             return songs;
         }
 

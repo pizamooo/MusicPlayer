@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 			 xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:local="clr-namespace:SpotifyLikePlayer"
+			 xmlns:conv="clr-namespace:SpotifyLikePlayer.Converters"
              StartupUri="Views/LoginWindow.xaml">
     <Application.Resources>
 		<ResourceDictionary>
@@ -10,6 +11,8 @@
 				<materialDesign:BundledTheme BaseTheme="Dark" PrimaryColor="DeepPurple" SecondaryColor="Lime" />
 				<ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
 			</ResourceDictionary.MergedDictionaries>
+			<conv:FavoriteColorConverter x:Key="FavoriteColorConverter"/>
+			<conv:FavoriteTooltipConverter x:Key="FavoriteTooltipConverter"/>
 		</ResourceDictionary>
 	</Application.Resources>
 </Application>

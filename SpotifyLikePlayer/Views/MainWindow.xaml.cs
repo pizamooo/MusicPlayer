@@ -16,6 +16,7 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 
 using System.Windows.Controls.Primitives;
+using System.Collections.ObjectModel;
 
 namespace SpotifyLikePlayer
 {
@@ -35,19 +36,24 @@ namespace SpotifyLikePlayer
             ToolTipService.SetInitialShowDelay(ProgressSlider, 0); // Мгновенное появление
         }
 
+        private void Playlist_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var viewModel = (MainViewModel)DataContext;
+            if (viewModel.SelectedPlaylist != null)
+            {
+                viewModel.LoadPlaylistSongs(viewModel.SelectedPlaylist); // Вызываем метод для загрузки песен
+            }
+            else
+            {
+                viewModel.Songs = viewModel._dbService.GetSongs() ?? new ObservableCollection<Song>(); // Возвращаемся к полному списку
+                viewModel.OnPropertyChanged(nameof(viewModel.Songs));
+            }
+        }
+
         private void Search_TextChanged(object sender, TextChangedEventArgs e)
         {
             var textBox = sender as TextBox;
             ViewModel.SearchSongs(textBox?.Text);
-        }
-
-        private void Playlist_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            var listBox = sender as ListBox;
-            if (listBox?.SelectedItem is Playlist selectedPlaylist)
-            {
-                ViewModel.LoadPlaylistSongs(selectedPlaylist);
-            }
         }
 
         private void ProgressSlider_MouseMove(object sender, MouseEventArgs e)
