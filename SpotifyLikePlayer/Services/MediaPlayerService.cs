@@ -51,6 +51,7 @@ namespace SpotifyLikePlayer.Services
             _isPlaying = true;
             _isPaused = false;
             _positionInSeconds = 0;
+            CurrentSong = song;
             OnPropertyChanged(nameof(CurrentSong));
             OnPropertyChanged(nameof(IsPlaying));
             OnPropertyChanged(nameof(IsPaused));
@@ -100,7 +101,19 @@ namespace SpotifyLikePlayer.Services
             }
         }
 
-        public Song CurrentSong => _playlist?[_currentIndex];
+        private Song _currentSong;
+        public Song CurrentSong
+        {
+            get => _currentSong;
+            private set
+            {
+                if (_currentSong != value)
+                {
+                    _currentSong = value;
+                    OnPropertyChanged(nameof(CurrentSong));
+                }
+            }
+        }
         public bool IsPlaying => _isPlaying;
         public bool IsPaused => _isPaused;
         public double PositionInSeconds

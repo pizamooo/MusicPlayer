@@ -13,6 +13,30 @@
 			</ResourceDictionary.MergedDictionaries>
 			<conv:FavoriteColorConverter x:Key="FavoriteColorConverter"/>
 			<conv:FavoriteTooltipConverter x:Key="FavoriteTooltipConverter"/>
+			<conv:FavoriteSymbolConverter x:Key="FavoriteSymbolConverter"/>
+			<conv:FavoriteIconConverter x:Key="FavoriteIconConverter" />
+
+			<Style x:Key="FavoriteStarButton" TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
+				<Setter Property="FontSize" Value="26"/>
+				<Setter Property="Width" Value="60"/>
+				<Setter Property="Height" Value="50"/>
+				<Setter Property="VerticalAlignment" Value="Center"/>
+				<Setter Property="ToolTip" Value="Add or remove from favorites"/>
+
+				<Setter Property="Content" Value="{Binding IsFavoriteLocal, Converter={StaticResource FavoriteSymbolConverter}}"/>
+				<Setter Property="Foreground" Value="{Binding IsFavoriteLocal, Converter={StaticResource FavoriteColorConverter}}"/>
+
+				<Setter Property="Focusable" Value="False"/>
+				<Setter Property="BorderThickness" Value="0"/>
+				<Setter Property="Background" Value="Transparent"/>
+
+				<Style.Triggers>
+					<Trigger Property="IsMouseOver" Value="True">
+						<Setter Property="Foreground" Value="Gold"/>
+						<Setter Property="Content" Value=""/>
+					</Trigger>
+				</Style.Triggers>
+			</Style>
 		</ResourceDictionary>
 	</Application.Resources>
 </Application>

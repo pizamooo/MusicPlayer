@@ -6,6 +6,7 @@
         xmlns:local="clr-namespace:SpotifyLikePlayer"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:converters="clr-namespace:SpotifyLikePlayer.Converters"
+		xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
         mc:Ignorable="d"
         Title="Player" Height="600" Width="860"
         DataContext="{Binding RelativeSource={RelativeSource Self}, Path=ViewModel}"
@@ -132,17 +133,14 @@
 						<GridViewColumn Header="Duration" DisplayMemberBinding="{Binding Duration, StringFormat={}{0:mm\\:ss}}" Width="150"/>
 						<GridViewColumn Width="150">
 							<GridViewColumn.Header>
-								<TextBlock VerticalAlignment="Center"/>
+								<TextBlock Text="" VerticalAlignment="Center"/>
 							</GridViewColumn.Header>
 							<GridViewColumn.CellTemplate>
 								<DataTemplate>
-									<Button Content="★" 
-        Command="{Binding DataContext.AddToFavoritesCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
-        CommandParameter="{Binding}"
-        ToolTip="Add or Remove from Favorites"
-        Style="{StaticResource MaterialDesignFlatButton}"
-        Foreground="Gold" 
-        FontSize="26" Width="70" Height="50" VerticalAlignment="Center"/>
+									<Button Style="{StaticResource FavoriteStarButton}"
+											Click="FavoriteButton_Click"
+											ToolTip="Add to Favorite"
+											DataContext="{Binding}" />
 								</DataTemplate>
 							</GridViewColumn.CellTemplate>
 						</GridViewColumn>
@@ -164,7 +162,7 @@
 				</Grid.ColumnDefinitions>
 
 				<!-- Buttons and Progress Slider -->
-				<StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+				<StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Cursor="">
 					<Button Command="{Binding PreviousCommand}" Margin="5">
 						<materialDesign:PackIcon Kind="SkipPrevious" Width="24" Height="24" Foreground="White" />
 					</Button>
@@ -202,6 +200,35 @@
 					<Slider x:Name="ProgressSlider" Value="{Binding PlayerService.PositionInSeconds, Mode=TwoWay}"
                             Minimum="0" Maximum="{Binding PlayerService.DurationInSeconds}"
                             Width="300" Margin="5" VerticalAlignment="Center" MouseMove="ProgressSlider_MouseMove"/>
+					<ToggleButton 
+    x:Name="BottomFavoriteButton"
+    Width="40"
+    Height="40"
+    FontSize="28"
+    Content="{Binding PlayerService.CurrentSong.IsFavoriteLocal, 
+                      Converter={StaticResource FavoriteIconConverter}}"
+    Foreground="{Binding PlayerService.CurrentSong.IsFavoriteLocal, 
+                      Converter={StaticResource FavoriteColorConverter}}"
+    IsChecked="{Binding PlayerService.CurrentSong.IsFavoriteLocal, Mode=OneWay}"
+    Background="Transparent"
+    BorderThickness="0"
+    Command="{Binding ToggleFavoriteCommand}"
+    CommandParameter="{Binding PlayerService.CurrentSong}" />
+					<TextBlock x:Name="FavoriteNotification"
+           Text=""
+							   MinWidth="220"
+           Foreground="Gold"
+           FontWeight="Bold"
+           FontSize="16"
+           Opacity="0"
+           HorizontalAlignment="Center"
+           VerticalAlignment="Top"
+           Margin="0,10,0,0"
+           RenderTransformOrigin="0.5,0.5">
+						<TextBlock.RenderTransform>
+							<ScaleTransform ScaleX="1.0" ScaleY="1.0"/>
+						</TextBlock.RenderTransform>
+					</TextBlock>
 				</StackPanel>
 
 				<!-- Volume Slider (короткий, справа) -->

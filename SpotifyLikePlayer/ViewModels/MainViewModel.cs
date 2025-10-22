@@ -24,7 +24,21 @@ namespace SpotifyLikePlayer.ViewModels
         public MediaPlayerService _playerService = new MediaPlayerService();
         private const string DefaultMusicPath = @"C:\Users\dobry\OneDrive\Documents\MusicForProject";  // путь песен
 
+        private Song _currentSong;
+        public Song CurrentSong
+        {
+            get => _currentSong;
+            set
+            {
+                if (_currentSong != value)
+                {
+                    _currentSong = value;
+                    OnPropertyChanged(nameof(CurrentSong));
+                }
+            }
+        }
         public event PropertyChangedEventHandler PropertyChanged;
+        private Song _lastObservedSong;
 
         private ObservableCollection<Song> _songs = new ObservableCollection<Song>();
         public ObservableCollection<Song> Songs
@@ -60,6 +74,8 @@ namespace SpotifyLikePlayer.ViewModels
         public ICommand AddToFavoritesCommand { get; }
         public ICommand HomeCommand { get; }
         public ICommand ShowFavoriteCommand { get; }
+        public ICommand ToggleFavoriteCommand { get; }
+
 
         public MainViewModel()
         {
@@ -68,6 +84,12 @@ namespace SpotifyLikePlayer.ViewModels
             NextCommand = new RelayCommand(o => _playerService.PlayNext());
             PreviousCommand = new RelayCommand(o => HandlePrevious());
             TogglePlayPauseCommand = new RelayCommand(o => TogglePlayPause());
+            _playerService.PropertyChanged += PlayerService_PropertyChanged;
+            ToggleFavoriteCommand = new RelayCommand(o =>
+            {
+                if (o is Song song)
+                    ToggleFavorite(song);
+            });
             AddToFavoritesCommand = new RelayCommand(o =>
             {
                 if (o is Song song && CurrentUser != null)
@@ -77,6 +99,110 @@ namespace SpotifyLikePlayer.ViewModels
             });
             HomeCommand = new RelayCommand(o => ShowHome());
             ShowFavoriteCommand = new RelayCommand(o => ShowFavoritePlaylist());
+            _playerService.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(MediaPlayerService.CurrentSong))
+                    SyncSelectedSongWithCurrent();
+            };
+            _playerService.PropertyChanged += (sender, e) =>
+            {
+                if (e.PropertyName == nameof(MediaPlayerService.CurrentSong))
+                {
+                    SyncSelectedSongWithCurrent();
+
+                    if (_playerService.CurrentSong != null)
+                    {
+                        // Отписываемся, если уже слушали старую песню (во избежание утечек)
+                        _playerService.CurrentSong.PropertyChanged -= CurrentSong_PropertyChanged;
+                        _playerService.CurrentSong.PropertyChanged += CurrentSong_PropertyChanged;
+                    }
+                }
+            };
+        }
+
+        private void PlayerService_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(MediaPlayerService.CurrentSong))
+            {
+                // синхронизируем SelectedSong с CurrentSong
+                SyncSelectedSongWithCurrent();
+
+                // отписываемся от предыдущей песни (если была)
+                if (_lastObservedSong != null)
+                {
+                    _lastObservedSong.PropertyChanged -= CurrentSong_PropertyChanged;
+                    _lastObservedSong = null;
+                }
+
+                // подписываемся на PropertyChanged новой текущей песни
+                var current = _playerService.CurrentSong;
+                if (current != null)
+                {
+                    current.PropertyChanged += CurrentSong_PropertyChanged;
+                    _lastObservedSong = current;
+                }
+            }
+        }
+
+        private void CurrentSong_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(Song.IsFavoriteLocal))
+            {
+                // безопасно возьмём текущую песню
+                var current = _playerService.CurrentSong;
+                if (current == null) return;
+
+                // Обновляем соответствующий элемент в Songs и UI в UI-потоке
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    var songInList = Songs.FirstOrDefault(s => s.SongId == current.SongId);
+                    if (songInList != null)
+                    {
+                        songInList.IsFavoriteLocal = current.IsFavoriteLocal;
+                        RefreshSongInView(songInList);
+                    }
+                });
+            }
+        }
+
+        private void SyncSelectedSongWithCurrent()
+        {
+            if (PlayerService.CurrentSong != null && Songs != null)
+            {
+                SelectedSong = Songs.FirstOrDefault(s => s.SongId == PlayerService.CurrentSong.SongId);
+                OnPropertyChanged(nameof(SelectedSong));
+
+                // Автоматически скроллим ListView к текущему треку
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    var main = Application.Current.Windows.OfType<MainWindow>().FirstOrDefault();
+                    main?.SongsListView?.ScrollIntoView(SelectedSong);
+                    main?.SongsListView?.UpdateLayout();
+                });
+            }
+        }
+
+        private void RefreshSongInView(Song song)
+        {
+            if (song == null) return;
+
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                try
+                {
+                    int index = Songs.IndexOf(song);
+                    if (index < 0) return;
+
+                    Songs.RemoveAt(index);
+                    Songs.Insert(index, song);
+
+                    Console.WriteLine($"RefreshSongInView: refreshed song at index {index}, id={song.SongId}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"RefreshSongInView error: {ex}");
+                }
+            });
         }
 
         private void ShowFavoritePlaylist()
@@ -90,65 +216,14 @@ namespace SpotifyLikePlayer.ViewModels
             var favoritePlaylist = Playlists.FirstOrDefault(p => p.Name == "Favorite");
             if (favoritePlaylist == null)
             {
-                Console.WriteLine("Favorite playlist not found.");
-                return;
-            }
-            var songsFromDb = _dbService.GetPlaylistSongs(favoritePlaylist.PlaylistId)
-                             ?? new ObservableCollection<Song>();
-
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                Songs.Clear();
-                foreach (var s in songsFromDb)
-                    Songs.Add(s);
-            });
-
-            SelectedPlaylist = favoritePlaylist;
-            Console.WriteLine($"[UI Updated] Favorite playlist reloaded ({Songs.Count} songs).");
-        }
-
-        private void ShowHome()
-        {
-            if (CurrentUser == null)
-            {
-                Console.WriteLine("Error: CurrentUser is null.");
-                return;
-            }
-
-            Console.WriteLine("[Home] Loading all songs...");
-
-            var allSongs = _dbService.GetSongs() ?? new ObservableCollection<Song>();
-
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                Songs.Clear();
-                foreach (var song in allSongs)
-                    Songs.Add(song);
-            });
-
-            SelectedPlaylist = null;
-            Console.WriteLine($"[Home] Loaded {Songs.Count} songs (all library).");
-        }
-
-        private void ToggleFavorite(Song song)
-        {
-            if (song == null || CurrentUser == null)
-            {
-                Console.WriteLine("Error: Song or CurrentUser is null.");
-                return;
-            }
-
-            var favoritePlaylist = Playlists.FirstOrDefault(p => p.Name == "Favorite");
-            if (favoritePlaylist == null)
-            {
                 Console.WriteLine("Favorite playlist not found, creating new one.");
                 using (var conn = new SqlConnection(_dbService._connectionString))
                 {
                     conn.Open();
                     string insertQuery = @"
-                INSERT INTO Playlists (Name, UserId, CreatedDate) 
-                VALUES (@Name, @UserId, GETDATE());
-                SELECT SCOPE_IDENTITY();";
+                    INSERT INTO Playlists (Name, UserId, CreatedDate) 
+                    VALUES (@Name, @UserId, GETDATE());
+                    SELECT SCOPE_IDENTITY();";
                     using (var cmd = new SqlCommand(insertQuery, conn))
                     {
                         cmd.Parameters.AddWithValue("@Name", "Favorite");
@@ -166,16 +241,124 @@ namespace SpotifyLikePlayer.ViewModels
                 }
             }
 
-            var favoriteSongs = _dbService.GetPlaylistSongs(favoritePlaylist.PlaylistId);
+            SelectedPlaylist = favoritePlaylist;
+            UpdateFavoritePlaylist();
+            Console.WriteLine($"Loaded {Songs.Count} songs from Favorite playlist.");
+        }
 
-            bool isAlreadyFavorite = favoriteSongs.Any(s => s.SongId == song.SongId);
+        private void UpdateFavoriteFlags()
+        {
+            var favoritePlaylist = Playlists.FirstOrDefault(p => p.Name == "Favorite");
+            var favoriteIds = favoritePlaylist != null
+                ? _dbService.GetPlaylistSongs(favoritePlaylist.PlaylistId)?.Select(s => s.SongId).ToHashSet()
+                : new HashSet<int>();
 
-            using (var conn = new SqlConnection(_dbService._connectionString))
+            foreach (var song in Songs.ToList())
             {
-                conn.Open();
-
-                if (isAlreadyFavorite)
+                bool previousFavorite = song.IsFavorite;
+                song.IsFavorite = favoriteIds.Contains(song.SongId);
+                if (previousFavorite != song.IsFavorite)
                 {
+                    Console.WriteLine($"Updated IsFavorite for song ID {song.SongId} to {song.IsFavorite}");
+                    song.IsFavoriteLocal = song.IsFavorite; // Синхронизация для "Home"
+                }
+            }
+
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                OnPropertyChanged(nameof(Songs));
+            });
+        }
+
+        private void ShowHome()
+        {
+            if (CurrentUser == null)
+            {
+                Console.WriteLine("Error: CurrentUser is null.");
+                return;
+            }
+
+            Console.WriteLine("[Home] Loading all songs...");
+
+            var allSongs = _dbService.GetSongs() ?? new ObservableCollection<Song>();
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                Songs.Clear();
+                foreach (var song in allSongs)
+                {
+                    Songs.Add(song);
+                }
+            });
+
+            UpdateFavoriteFlags();
+            SelectedPlaylist = null;
+            Console.WriteLine($"[Home] Loaded {Songs.Count} songs (all library).");
+        }
+
+        private void ToggleFavorite(Song song)
+        {
+            if (song == null || CurrentUser == null)
+            {
+                Console.WriteLine("Error: Song or CurrentUser is null.");
+                return;
+            }
+
+            song.IsFavoriteLocal = !song.IsFavoriteLocal;
+
+            var favoritePlaylist = Playlists.FirstOrDefault(p => p.Name == "Favorite");
+            if (favoritePlaylist == null)
+            {
+                using (var conn = new SqlConnection(_dbService._connectionString))
+                {
+                    conn.Open();
+                    string insertQuery = @"
+            INSERT INTO Playlists (Name, UserId, CreatedDate) 
+            VALUES (@Name, @UserId, GETDATE());
+            SELECT SCOPE_IDENTITY();";
+                    using (var cmd = new SqlCommand(insertQuery, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@Name", "Favorite");
+                        cmd.Parameters.AddWithValue("@UserId", CurrentUser.UserId);
+                        var playlistId = Convert.ToInt32(cmd.ExecuteScalar());
+                        favoritePlaylist = new Playlist
+                        {
+                            PlaylistId = playlistId,
+                            Name = "Favorite",
+                            UserId = CurrentUser.UserId,
+                            CreatedDate = DateTime.Now
+                        };
+                        Playlists.Add(favoritePlaylist);
+                    }
+                }
+            }
+
+            var existingSongs = _dbService.GetPlaylistSongs(favoritePlaylist.PlaylistId);
+            bool isCurrentlyFavorite = existingSongs.Any(s => s.SongId == song.SongId);
+
+            if (!isCurrentlyFavorite && song.IsFavoriteLocal)
+            {
+                using (var conn = new SqlConnection(_dbService._connectionString))
+                {
+                    conn.Open();
+                    string insertQuery = @"
+            INSERT INTO PlaylistSongs (PlaylistId, SongId, Position)
+            VALUES (@PlaylistId, @SongId, 
+            (SELECT COALESCE(MAX(CAST(Position AS INT)), 0) + 1 
+             FROM PlaylistSongs WHERE PlaylistId = @PlaylistId))";
+                    using (var cmd = new SqlCommand(insertQuery, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@PlaylistId", favoritePlaylist.PlaylistId);
+                        cmd.Parameters.AddWithValue("@SongId", song.SongId);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+                song.IsFavorite = true;
+            }
+            else if (isCurrentlyFavorite && !song.IsFavoriteLocal)
+            {
+                using (var conn = new SqlConnection(_dbService._connectionString))
+                {
+                    conn.Open();
                     string deleteQuery = "DELETE FROM PlaylistSongs WHERE PlaylistId = @PlaylistId AND SongId = @SongId";
                     using (var cmd = new SqlCommand(deleteQuery, conn))
                     {
@@ -183,37 +366,52 @@ namespace SpotifyLikePlayer.ViewModels
                         cmd.Parameters.AddWithValue("@SongId", song.SongId);
                         cmd.ExecuteNonQuery();
                     }
-                    Console.WriteLine($"Removed song {song.Title} from Favorites");
                 }
-                else
-                {
-                    string insertQuery = @"
-                INSERT INTO PlaylistSongs (PlaylistId, SongId, Position)
-                VALUES (@PlaylistId, @SongId, 
-                        (SELECT COALESCE(MAX(CAST(Position AS INT)), 0) + 1 
-                         FROM PlaylistSongs WHERE PlaylistId = @PlaylistId))";
-                    using (var cmd = new SqlCommand(insertQuery, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@PlaylistId", favoritePlaylist.PlaylistId);
-                        cmd.Parameters.AddWithValue("@SongId", song.SongId);
-                        cmd.ExecuteNonQuery();
-                    }
-                    Console.WriteLine($"Added song {song.Title} to Favorites");
-                }
+                song.IsFavorite = false;
             }
-
-            // 🔄 Обновляем UI, если пользователь сейчас в "Favorite"
-            if (SelectedPlaylist != null && SelectedPlaylist.Name == "Favorite")
+            if (SelectedPlaylist?.Name == "Favorite")
+                UpdateFavoritePlaylist();
+            else
+                RefreshSongInView(song);
+            if (CurrentSong != null && song.SongId == CurrentSong.SongId)
             {
-                var updatedSongs = _dbService.GetPlaylistSongs(favoritePlaylist.PlaylistId);
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    Songs.Clear();
-                    foreach (var s in updatedSongs)
-                        Songs.Add(s);
-                });
+                OnPropertyChanged(nameof(CurrentSong));
             }
-            song.IsFavorite = !isAlreadyFavorite;
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                var main = Application.Current.Windows.OfType<MainWindow>().FirstOrDefault();
+                main?.ShowFavoriteNotification(
+                    song.IsFavoriteLocal ? "⭐ Added to favorites" : "❌ Removed from favorites",
+                    song.IsFavoriteLocal);
+            });
+        }
+        private void UpdateFavoritePlaylist()
+        {
+            var favoritePlaylist = Playlists.FirstOrDefault(p => p.Name == "Favorite");
+            if (favoritePlaylist == null) return;
+
+            var updatedSongsFromDb = _dbService.GetPlaylistSongs(favoritePlaylist.PlaylistId) ?? new ObservableCollection<Song>();
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                var songDict = Songs.ToDictionary(s => s.SongId, s => s);
+                Songs.Clear();
+                foreach (var newSong in updatedSongsFromDb)
+                {
+                    if (songDict.TryGetValue(newSong.SongId, out var existingSong))
+                    {
+                        existingSong.IsFavorite = true;
+                        existingSong.IsFavoriteLocal = true;
+                        Songs.Add(existingSong);
+                    }
+                    else
+                    {
+                        newSong.IsFavorite = true;
+                        newSong.IsFavoriteLocal = true;
+                        Songs.Add(newSong);
+                    }
+                }
+                OnPropertyChanged(nameof(Songs));
+            });
         }
 
         public void LoadPlaylistSongs(Playlist playlist)
@@ -236,6 +434,7 @@ namespace SpotifyLikePlayer.ViewModels
                 {
                     Songs = _dbService.GetSongs();
                     Playlists = _dbService.GetPlaylists(CurrentUser.UserId);
+                    UpdateFavoriteFlags();
                     OnPropertyChanged(nameof(Songs));
                     OnPropertyChanged(nameof(Playlists));
                 }
@@ -250,6 +449,7 @@ namespace SpotifyLikePlayer.ViewModels
             {
                 Songs = _dbService.GetSongs();
                 Playlists = _dbService.GetPlaylists(CurrentUser.UserId);
+                UpdateFavoriteFlags();
                 OnPropertyChanged(nameof(Songs));
                 OnPropertyChanged(nameof(Playlists));
 

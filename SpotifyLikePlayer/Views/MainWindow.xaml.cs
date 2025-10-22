@@ -17,6 +17,7 @@ using System.Windows.Shapes;
 
 using System.Windows.Controls.Primitives;
 using System.Collections.ObjectModel;
+using System.Windows.Media.Animation;
 
 namespace SpotifyLikePlayer
 {
@@ -34,6 +35,43 @@ namespace SpotifyLikePlayer
             ProgressSlider.MouseMove += ProgressSlider_MouseMove;
             // Уменьшаем задержку появления ToolTip
             ToolTipService.SetInitialShowDelay(ProgressSlider, 0); // Мгновенное появление
+        }
+
+        public async void ShowFavoriteNotification(string message, bool added)
+        {
+            // Настройка текста и цвета
+            FavoriteNotification.Text = message;
+            FavoriteNotification.Foreground = added ? Brushes.Gold : Brushes.Gray;
+
+            // Анимация появления
+            var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200));
+            FavoriteNotification.BeginAnimation(OpacityProperty, fadeIn);
+
+            // Ждем 1.5 секунды
+            await Task.Delay(1500);
+
+            // Анимация исчезновения
+            var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(500));
+            FavoriteNotification.BeginAnimation(OpacityProperty, fadeOut);
+        }
+
+        private void FavoriteButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!(DataContext is MainViewModel vm)) return;
+
+            if (sender is Button button && button.DataContext is Song song)
+            {
+                // Выполним команду (MVVM way)
+                var cmd = vm.AddToFavoritesCommand;
+                if (cmd != null && cmd.CanExecute(song))
+                {
+                    cmd.Execute(song);
+                    return;
+                }
+
+                // Альтернатива: вызвать публичный метод VM (если есть)
+                // vm.ToggleFavorite(song);
+            }
         }
 
         private void Playlist_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -85,6 +123,14 @@ namespace SpotifyLikePlayer
                 var playlistToUse = viewModel.SelectedPlaylist != null ? viewModel._dbService.GetPlaylistSongs(viewModel.SelectedPlaylist.PlaylistId) : viewModel.Songs;
                 int songIndex = playlistToUse.ToList().FindIndex(s => s.SongId == selectedSong.SongId);
                 viewModel.PlayerService.Play(selectedSong, playlistToUse, songIndex);
+            }
+        }
+
+        public void ScrollToSelectedSong()
+        {
+            if (SongsListView.SelectedItem != null)
+            {
+                SongsListView.ScrollIntoView(SongsListView.SelectedItem);
             }
         }
     }
