@@ -21,6 +21,118 @@ namespace SpotifyLikePlayer.Services
     {
         public readonly string _connectionString = ConfigurationManager.ConnectionStrings["MusicDB"].ConnectionString;
 
+        public ObservableCollection<Playlist> GetPlaylists(int? userId = null)
+        {
+            var playlists = new ObservableCollection<Playlist>();
+
+            using (var conn = new SqlConnection(_connectionString))
+            {
+                conn.Open();
+
+                string query = userId.HasValue
+                    ? "SELECT PlaylistId, Name, UserId, CreatedDate FROM Playlists WHERE UserId = @UserId"
+                    : "SELECT PlaylistId, Name, UserId, CreatedDate FROM Playlists";
+
+                using (var cmd = new SqlCommand(query, conn))
+                {
+                    if (userId.HasValue)
+                        cmd.Parameters.AddWithValue("@UserId", userId.Value);
+
+                    var reader = cmd.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        playlists.Add(new Playlist
+                        {
+                            PlaylistId = (int)reader["PlaylistId"],
+                            Name = reader["Name"].ToString(),
+                            UserId = reader["UserId"] is DBNull ? 0 : (int)reader["UserId"],
+                            CreatedDate = reader["CreatedDate"] is DBNull ? DateTime.Now : (DateTime)reader["CreatedDate"]
+                        });
+                    }
+                }
+            }
+
+            return playlists;
+        }
+
+        public Playlist CreatePlaylist(string name, int userId)
+        {
+            using (var conn = new SqlConnection(_connectionString))
+            {
+                conn.Open();
+                string insertQuery = @"
+                    INSERT INTO Playlists (Name, UserId, CreatedDate) 
+                    VALUES (@Name, @UserId, GETDATE());
+                    SELECT SCOPE_IDENTITY();";
+
+                using (var cmd = new SqlCommand(insertQuery, conn))
+                {
+                    cmd.Parameters.AddWithValue("@Name", name);
+                    cmd.Parameters.AddWithValue("@UserId", userId);
+
+                    int id = Convert.ToInt32(cmd.ExecuteScalar());
+                    return new Playlist
+                    {
+                        PlaylistId = id,
+                        Name = name,
+                        UserId = userId,
+                        CreatedDate = DateTime.Now
+                    };
+                }
+            }
+        }
+
+        public void DeletePlaylist(int playlistId)
+        {
+            using (var conn = new SqlConnection(_connectionString))
+            {
+                conn.Open();
+
+                var cmdSongs = new SqlCommand("DELETE FROM PlaylistSongs WHERE PlaylistId = @PlaylistId", conn);
+                cmdSongs.Parameters.AddWithValue("@PlaylistId", playlistId);
+                cmdSongs.ExecuteNonQuery();
+
+                var cmdPlaylist = new SqlCommand("DELETE FROM Playlists WHERE PlaylistId = @PlaylistId", conn);
+                cmdPlaylist.Parameters.AddWithValue("@PlaylistId", playlistId);
+                cmdPlaylist.ExecuteNonQuery();
+            }
+        }
+
+        public void AddSongToPlaylist(int playlistId, int songId)
+        {
+            using (var conn = new SqlConnection(_connectionString))
+            {
+                conn.Open();
+
+                string query = @"
+                    INSERT INTO PlaylistSongs (PlaylistId, SongId, Position)
+                    VALUES (@PlaylistId, @SongId,
+                    (SELECT ISNULL(MAX(Position), 0) + 1 FROM PlaylistSongs WHERE PlaylistId = @PlaylistId))";
+
+                using (var cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@PlaylistId", playlistId);
+                    cmd.Parameters.AddWithValue("@SongId", songId);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public bool IsSongInPlaylist(int playlistId, int songId)
+        {
+            using (var conn = new SqlConnection(_connectionString))
+            {
+                conn.Open();
+                string query = "SELECT COUNT(*) FROM PlaylistSongs WHERE PlaylistId=@p AND SongId=@s";
+                using (var cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@p", playlistId);
+                    cmd.Parameters.AddWithValue("@s", songId);
+                    return (int)cmd.ExecuteScalar() > 0;
+                }
+            }
+        }
+
         public User Authenticate(string username, string password)
         {
                 using (SqlConnection conn = new SqlConnection(_connectionString))
@@ -286,7 +398,7 @@ namespace SpotifyLikePlayer.Services
             }
         }
 
-        public int AddOrGetAlbum(string albumTitle, int artistId = 1, int releaseYear = 0)  // Добавь параметры если нужно
+        public int AddOrGetAlbum(string albumTitle, int artistId = 1, int releaseYear = 0)
         {
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {

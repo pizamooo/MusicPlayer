@@ -56,8 +56,8 @@ namespace SpotifyLikePlayer.Converters
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             if (value is bool isFavorite && isFavorite)
-                return ""; // Закрашенная звезда
-            return "";     // Пустая звезда
+                return "";
+            return ""; 
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

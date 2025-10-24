@@ -33,26 +33,55 @@ namespace SpotifyLikePlayer
             DataContext = ViewModel;
             InitializeComponent();
             ProgressSlider.MouseMove += ProgressSlider_MouseMove;
-            // Уменьшаем задержку появления ToolTip
-            ToolTipService.SetInitialShowDelay(ProgressSlider, 0); // Мгновенное появление
+            ToolTipService.SetInitialShowDelay(ProgressSlider, 0);
         }
 
-        public async void ShowFavoriteNotification(string message, bool added)
+        private void PlaylistsListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            // Настройка текста и цвета
-            FavoriteNotification.Text = message;
-            FavoriteNotification.Foreground = added ? Brushes.Gold : Brushes.Gray;
+            if (PlaylistsListBox.SelectedItem is Playlist selectedPlaylist)
+            {
+                var vm = DataContext as MainViewModel;
+                vm?.LoadPlaylistSongs(selectedPlaylist);
+            }
+        }
+        public async void ShowNotification(string message, bool isPositive)
+        {
+            if (NotificationText == null)
+                return;
 
-            // Анимация появления
-            var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200));
-            FavoriteNotification.BeginAnimation(OpacityProperty, fadeIn);
+            // Меняем цвет текста в зависимости от статуса
+            NotificationText.Foreground = isPositive ? Brushes.LimeGreen : Brushes.OrangeRed;
+            NotificationText.Text = message;
+            NotificationText.Opacity = 1;
+            NotificationText.Visibility = Visibility.Visible;
 
-            // Ждем 1.5 секунды
-            await Task.Delay(1500);
+            // Плавное появление
+            var fadeIn = new DoubleAnimation
+            {
+                From = 0,
+                To = 1,
+                Duration = TimeSpan.FromSeconds(0.3)
+            };
+            NotificationText.BeginAnimation(UIElement.OpacityProperty, fadeIn);
 
-            // Анимация исчезновения
-            var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(500));
-            FavoriteNotification.BeginAnimation(OpacityProperty, fadeOut);
+            // Показывается 2 секунды
+            await Task.Delay(2000);
+
+            // Плавное исчезновение
+            var fadeOut = new DoubleAnimation
+            {
+                From = 1,
+                To = 0,
+                Duration = TimeSpan.FromSeconds(0.5),
+                FillBehavior = FillBehavior.Stop
+            };
+
+            fadeOut.Completed += (s, e) =>
+            {
+                NotificationText.Visibility = Visibility.Collapsed;
+            };
+
+            NotificationText.BeginAnimation(UIElement.OpacityProperty, fadeOut);
         }
 
         private void FavoriteButton_Click(object sender, RoutedEventArgs e)

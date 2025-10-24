@@ -197,6 +197,7 @@
     </ApplicationDefinition>
     <Compile Include="Converters\FavoriteConverters.cs" />
     <Compile Include="Converters\SecondsToTimeConverter.cs" />
+    <Compile Include="Converters\SongPlaylistTupleConverter.cs" />
     <Compile Include="Views\ForgotPasswordWindow.xaml.cs">
       <DependentUpon>ForgotPasswordWindow.xaml</DependentUpon>
     </Compile>
@@ -269,6 +270,9 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="music.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.VisualBasic" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\packages\Microsoft.Data.SqlClient.SNI.6.0.2\build\net462\Microsoft.Data.SqlClient.SNI.targets" Condition="Exists('..\packages\Microsoft.Data.SqlClient.SNI.6.0.2\build\net462\Microsoft.Data.SqlClient.SNI.targets')" />

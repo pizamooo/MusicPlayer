@@ -95,13 +95,45 @@
 		<StackPanel Grid.Column="0" Grid.Row="1" Background="#121212">
 			<Button Content="Home" Margin="5,5,5,5" Command="{Binding HomeCommand}"/>
 			<Button Content="Favorite" Margin="5,5,5,5" Command="{Binding ShowFavoriteCommand}"/>
+			<TextBlock Text="Плейлисты" Foreground="White" FontSize="20"
+               FontWeight="Bold" Margin="10,10,0,10"/>
+			<ListBox x:Name="PlaylistsListBox"
+         MouseDoubleClick="PlaylistsListBox_MouseDoubleClick"
+         ItemsSource="{Binding Playlists}"
+         SelectedItem="{Binding SelectedPlaylist}"
+         Background="#121212"
+         Foreground="White">
+
+				<ListBox.ItemTemplate>
+					<DataTemplate>
+						<TextBlock Text="{Binding Name}" FontSize="18" Padding="8" />
+					</DataTemplate>
+				</ListBox.ItemTemplate>
+
+				<ListBox.ContextMenu>
+					<!-- ✅ Привязываем контекст меню к окну -->
+					<ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+						<MenuItem Header="Удалить плейлист"
+                      Command="{Binding DeletePlaylistCommand}"
+                      CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+					</ContextMenu>
+				</ListBox.ContextMenu>
+			</ListBox>
 		</StackPanel>
 
 		<!-- Main Content: Song List -->
 		<Grid Grid.Column="1" Grid.Row="1">
-			<ListView x:Name="SongsListView" ItemsSource="{Binding Songs}" SelectedItem="{Binding SelectedSong}" 
-                      Margin="10" Background="#121212" Foreground="White" 
-                      HorizontalAlignment="Stretch" MinWidth="600" FontSize="20" MouseDoubleClick="SongsListView_MouseDoubleClick">
+			<ListView x:Name="SongsListView"
+              ItemsSource="{Binding Songs}"
+              SelectedItem="{Binding SelectedSong}"
+              Margin="10"
+              Background="#121212"
+              Foreground="White"
+              HorizontalAlignment="Stretch"
+              MinWidth="600"
+              FontSize="20"
+              MouseDoubleClick="SongsListView_MouseDoubleClick">
+
 				<ListView.ItemContainerStyle>
 					<Style TargetType="ListViewItem">
 						<Setter Property="Background" Value="Transparent" />
@@ -109,7 +141,6 @@
 						<Style.Triggers>
 							<Trigger Property="IsMouseOver" Value="True">
 								<Setter Property="Background" Value="#333333" />
-								<Setter Property="Foreground" Value="White" />
 							</Trigger>
 							<Trigger Property="IsSelected" Value="True">
 								<Setter Property="Background" Value="#444444" />
@@ -117,6 +148,7 @@
 						</Style.Triggers>
 					</Style>
 				</ListView.ItemContainerStyle>
+
 				<ListView.View>
 					<GridView>
 						<GridViewColumn Width="120">
@@ -126,26 +158,89 @@
 								</DataTemplate>
 							</GridViewColumn.CellTemplate>
 						</GridViewColumn>
+
 						<GridViewColumn Header="Title" DisplayMemberBinding="{Binding Title}" Width="300" />
 						<GridViewColumn Header="Artist" DisplayMemberBinding="{Binding Artist.Name}" Width="300" />
 						<GridViewColumn Header="Album" DisplayMemberBinding="{Binding Album.Title}" Width="300" />
 						<GridViewColumn Header="Genre" DisplayMemberBinding="{Binding Genre}" Width="250" />
-						<GridViewColumn Header="Duration" DisplayMemberBinding="{Binding Duration, StringFormat={}{0:mm\\:ss}}" Width="150"/>
+						<GridViewColumn Header="Duration" DisplayMemberBinding="{Binding Duration, StringFormat={}{0:mm\\:ss}}" Width="150" />
+
 						<GridViewColumn Width="150">
-							<GridViewColumn.Header>
-								<TextBlock Text="" VerticalAlignment="Center"/>
-							</GridViewColumn.Header>
 							<GridViewColumn.CellTemplate>
 								<DataTemplate>
 									<Button Style="{StaticResource FavoriteStarButton}"
-											Click="FavoriteButton_Click"
-											ToolTip="Add to Favorite"
-											DataContext="{Binding}" />
+                                    Click="FavoriteButton_Click"
+                                    ToolTip="Add to Favorite"
+                                    DataContext="{Binding}" />
 								</DataTemplate>
 							</GridViewColumn.CellTemplate>
 						</GridViewColumn>
 					</GridView>
 				</ListView.View>
+
+				<!-- Контекстное меню песен -->
+				<ListView.ContextMenu>
+					<ContextMenu
+                DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+
+						<!-- Добавление в существующий плейлист -->
+						<MenuItem Header="Добавить в плейлист">
+							<MenuItem.ItemsSource>
+								<Binding Path="Playlists" />
+							</MenuItem.ItemsSource>
+							<MenuItem.ItemContainerStyle>
+								<Style TargetType="MenuItem">
+									<Setter Property="Header" Value="{Binding Name}" />
+									<Setter Property="Command"
+                                    Value="{Binding DataContext.AddToPlaylistCommand,
+                                                    RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+									<Setter Property="CommandParameter">
+										<Setter.Value>
+											<MultiBinding Converter="{StaticResource SongPlaylistTupleConverter}">
+												<!-- Плейлист -->
+												<Binding />
+												<!-- Песня -->
+												<Binding Path="PlacementTarget.SelectedItem"
+                                                 RelativeSource="{RelativeSource AncestorType=ContextMenu}" />
+											</MultiBinding>
+										</Setter.Value>
+									</Setter>
+								</Style>
+							</MenuItem.ItemContainerStyle>
+						</MenuItem>
+
+						<Separator />
+						<!-- 🗑 Удалить из плейлиста -->
+						<MenuItem Header="Удалить из плейлиста">
+							<MenuItem.ItemsSource>
+								<Binding Path="Playlists" />
+							</MenuItem.ItemsSource>
+							<MenuItem.ItemContainerStyle>
+								<Style TargetType="MenuItem">
+									<Setter Property="Header" Value="{Binding Name}" />
+									<Setter Property="Command"
+                    Value="{Binding DataContext.RemoveFromPlaylistCommand,
+                                    RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+									<Setter Property="CommandParameter">
+										<Setter.Value>
+											<MultiBinding Converter="{StaticResource SongPlaylistTupleConverter}">
+												<!-- Плейлист -->
+												<Binding />
+												<!-- Песня -->
+												<Binding Path="PlacementTarget.SelectedItem"
+                                 RelativeSource="{RelativeSource AncestorType=ContextMenu}" />
+											</MultiBinding>
+										</Setter.Value>
+									</Setter>
+								</Style>
+							</MenuItem.ItemContainerStyle>
+						</MenuItem>
+						<!-- Создать новый плейлист -->
+						<MenuItem Header="Создать новый плейлист"
+                          Command="{Binding CreatePlaylistCommand}" />
+
+					</ContextMenu>
+				</ListView.ContextMenu>
 			</ListView>
 		</Grid>
 
@@ -214,21 +309,20 @@
     BorderThickness="0"
     Command="{Binding ToggleFavoriteCommand}"
     CommandParameter="{Binding PlayerService.CurrentSong}" />
-					<TextBlock x:Name="FavoriteNotification"
+					<TextBlock x:Name="NotificationText"
            Text=""
-							   MinWidth="220"
-           Foreground="Gold"
+           Foreground="White"
+           FontSize="18"
            FontWeight="Bold"
-           FontSize="16"
-           Opacity="0"
            HorizontalAlignment="Center"
-           VerticalAlignment="Top"
-           Margin="0,10,0,0"
-           RenderTransformOrigin="0.5,0.5">
-						<TextBlock.RenderTransform>
-							<ScaleTransform ScaleX="1.0" ScaleY="1.0"/>
-						</TextBlock.RenderTransform>
-					</TextBlock>
+           VerticalAlignment="Bottom"
+           Margin="0,0,0,30"
+           Background="#99000000"
+           Padding="10,5"
+           Opacity="0"
+           Visibility="Collapsed"
+           TextWrapping="Wrap"
+           TextAlignment="Center"/>
 				</StackPanel>
 
 				<!-- Volume Slider (короткий, справа) -->

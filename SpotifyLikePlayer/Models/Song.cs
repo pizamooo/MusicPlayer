@@ -27,7 +27,6 @@ namespace SpotifyLikePlayer.Models
 
 
         private bool _isFavorite;
-        private bool _isFavoriteLocal;
         public bool IsFavorite
         {
             get => _isFavorite;
@@ -36,17 +35,12 @@ namespace SpotifyLikePlayer.Models
                 if (_isFavorite != value)
                 {
                     _isFavorite = value;
-                    OnPropertyChanged();
-                    // Синхронизация только если нужно (например, при загрузке из базы)
-                    if (_isFavoriteLocal != _isFavorite)
-                    {
-                        _isFavoriteLocal = _isFavorite;
-                        OnPropertyChanged(nameof(IsFavoriteLocal));
-                    }
+                    OnPropertyChanged(nameof(IsFavorite));
+                    IsFavoriteLocal = value;
                 }
             }
         }
-
+        private bool _isFavoriteLocal;
         public bool IsFavoriteLocal
         {
             get => _isFavoriteLocal;
@@ -55,7 +49,9 @@ namespace SpotifyLikePlayer.Models
                 if (_isFavoriteLocal != value)
                 {
                     _isFavoriteLocal = value;
-                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(IsFavoriteLocal));
+                    if (_isFavorite != value)
+                        _isFavorite = value;
                 }
             }
         }
