@@ -91,7 +91,7 @@ namespace SpotifyLikePlayer.ViewModels
             TogglePlayPauseCommand = new RelayCommand(o => TogglePlayPause());
             _playerService.PropertyChanged += PlayerService_PropertyChanged;
             _dbService = new DatabaseService();
-            Playlists = new ObservableCollection<Playlist>(_dbService.GetPlaylists());
+            Playlists = new ObservableCollection<Playlist>(_dbService.GetPlaylists().OrderBy(p => p.Name != "Favorite").ThenBy(p => p.Name));
             CreatePlaylistCommand = new RelayCommand(_ => CreatePlaylistDialog());
             RemoveFromPlaylistCommand = new RelayCommand(RemoveFromPlaylist);
             DeletePlaylistCommand = new RelayCommand(o =>
@@ -144,77 +144,100 @@ namespace SpotifyLikePlayer.ViewModels
             });
         }
 
-        private void RemoveFromPlaylist(object parameter)
-{
-    var tuple = parameter as Tuple<Playlist, Song>;
-    if (tuple == null)
-    {
-        (Application.Current.MainWindow as MainWindow)?.ShowNotification("⚠️ Ошибка удаления: неверный параметр.", false);
-        return;
-    }
-
-    var playlist = tuple.Item1;
-    var song = tuple.Item2;
-
-    if (playlist == null || song == null)
-    {
-        (Application.Current.MainWindow as MainWindow)?.ShowNotification("⚠️ Не выбраны песня или плейлист.", false);
-        return;
-    }
-
-    try
-    {
-        using (var conn = new SqlConnection(_dbService._connectionString))
+        public void RemoveFromPlaylist(object parameter)
         {
-            conn.Open();
+            Song song = null;
+            Playlist playlist = null;
 
-            using (var cmd = new SqlCommand("DELETE FROM PlaylistSongs WHERE PlaylistId=@PlaylistId AND SongId=@SongId", conn))
-            {
-                cmd.Parameters.AddWithValue("@PlaylistId", playlist.PlaylistId);
-                cmd.Parameters.AddWithValue("@SongId", song.SongId);
-                cmd.ExecuteNonQuery();
-            }
-        }
-
-        // 🔁 Обновляем список песен, если этот плейлист сейчас открыт
-        if (SelectedPlaylist != null && SelectedPlaylist.PlaylistId == playlist.PlaylistId)
-        {
-            LoadPlaylistSongs(playlist);
-        }
-
-        (Application.Current.MainWindow as MainWindow)?.ShowNotification($"❌ Песня удалена из \"{playlist.Name}\".", true);
-    }
-    catch (Exception ex)
-    {
-        (Application.Current.MainWindow as MainWindow)?.ShowNotification($"⚠️ Ошибка при удалении: {ex.Message}", false);
-    }
-}
-        private void AddToPlaylist(object parameter)
-        {
+            // Проверяем тип параметра (Tuple<Playlist, Song> или Song)
             if (parameter is Tuple<Playlist, Song> tuple)
             {
-                var playlist = tuple.Item1;
-                var song = tuple.Item2;
+                playlist = tuple.Item1;
+                song = tuple.Item2;
+            }
+            else if (parameter is Song singleSong)
+            {
+                song = singleSong;
+            }
 
-                _dbService.AddSongToPlaylist(playlist.PlaylistId, song.SongId);
+            if (song == null)
+            {
+                Notify("Ошибка удаления: песня не выбрана.", false);
+                return;
+            }
 
-                if (SelectedPlaylist != null && SelectedPlaylist.PlaylistId == playlist.PlaylistId)
+            try
+            {
+                using (var conn = new SqlConnection(_dbService._connectionString))
+                {
+                    conn.Open();
+
+                    if (playlist != null)
+                    {
+                        // Удаление из одного конкретного плейлиста
+                        using (var cmd = new SqlCommand("DELETE FROM PlaylistSongs WHERE PlaylistId=@PlaylistId AND SongId=@SongId", conn))
+                        {
+                            cmd.Parameters.AddWithValue("@PlaylistId", playlist.PlaylistId);
+                            cmd.Parameters.AddWithValue("@SongId", song.SongId);
+                            int rows = cmd.ExecuteNonQuery();
+
+                            if (rows > 0)
+                                Notify($"Песня удалена из «{playlist.Name}».", true);
+                            else
+                                Notify($"Песни не было в «{playlist.Name}».", false);
+                        }
+                    }
+                    else
+                    {
+                        // Удаляем из всех плейлистов, где песня присутствует
+                        using (var cmd = new SqlCommand("DELETE FROM PlaylistSongs WHERE SongId=@SongId", conn))
+                        {
+                            cmd.Parameters.AddWithValue("@SongId", song.SongId);
+                            int rows = cmd.ExecuteNonQuery();
+
+                            if (rows > 0)
+                                Notify($"Песня удалена из всех плейлистов.", true);
+                            else
+                                Notify($"Песня не найдена ни в одном плейлисте.", false);
+                        }
+                    }
+                }
+
+                // Обновляем список песен в текущем активном плейлисте, если нужно
+                if (SelectedPlaylist != null)
                 {
                     LoadPlaylistSongs(SelectedPlaylist);
                 }
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    var main = Application.Current.Windows.OfType<MainWindow>().FirstOrDefault();
-                    main?.ShowNotification($"🎵 Песня добавлена в «{playlist.Name}»", true);
-                });
             }
+            catch (Exception ex)
+            {
+                Notify($"Ошибка при удалении: {ex.Message}", false);
+            }
+        }
+        public void AddToPlaylist(object parameter)
+        {
+            if (!(parameter is Tuple<Playlist, Song> tuple)) return;
+            var playlist = tuple.Item1;
+            var song = tuple.Item2;
+            var existing = _dbService.GetPlaylistSongs(playlist.PlaylistId)?.Any(s => s.SongId == song.SongId) ?? false;
+            if (existing)
+            {
+                Notify($"Песня уже есть в \"{playlist.Name}\"", false);
+                return;
+            }
+
+            _dbService.AddSongToPlaylist(playlist.PlaylistId, song.SongId);
+            Notify($"Песня добавлена в \"{playlist.Name}\"", true);
+
+            if (SelectedPlaylist != null && SelectedPlaylist.PlaylistId == playlist.PlaylistId)
+                LoadPlaylistSongs(SelectedPlaylist);
         }
 
         private void CreatePlaylistDialog()
         {
             if (CurrentUser == null)
             {
-                (Application.Current.MainWindow as MainWindow)?.ShowNotification("⚠️ Нужно войти в аккаунт, чтобы создать плейлист.", false);
+                (Application.Current.MainWindow as MainWindow)?.ShowNotification("Нужно войти в аккаунт, чтобы создать плейлист.", false);
                 return;
             }
 
@@ -228,11 +251,11 @@ namespace SpotifyLikePlayer.ViewModels
             {
                 Playlists.Add(newPlaylist);
                 OnPropertyChanged(nameof(Playlists));
-                (Application.Current.MainWindow as MainWindow)?.ShowNotification($"✅ Плейлист \"{name}\" успешно создан!", true);
+                Notify($"Плейлист \"{name}\" успешно создан!", true);
             }
             else
             {
-                (Application.Current.MainWindow as MainWindow)?.ShowNotification("❌ Ошибка при создании плейлиста.", false);
+                Notify("Ошибка при создании плейлиста.", false);
             }
         }
 
@@ -243,7 +266,7 @@ namespace SpotifyLikePlayer.ViewModels
 
             if (playlist.Name.Equals("Favorite", StringComparison.OrdinalIgnoreCase))
             {
-                Notify("❌ Нельзя удалить плейлист 'Favorite'.", false);
+                Notify("Нельзя удалить плейлист 'Favorite'.", false);
                 return;
             }
 
@@ -271,11 +294,11 @@ namespace SpotifyLikePlayer.ViewModels
                 });
 
                 ShowHome();
-                Notify($"🗑️ Плейлист \"{playlist.Name}\" удалён.", true);
+                Notify($"Плейлист \"{playlist.Name}\" удалён.", true);
             }
             catch (Exception ex)
             {
-                Notify($"❌ Ошибка при удалении: {ex.Message}", false);
+                Notify($"Ошибка при удалении: {ex.Message}", false);
             }
         }
 
@@ -287,7 +310,7 @@ namespace SpotifyLikePlayer.ViewModels
             if (string.IsNullOrWhiteSpace(name)) return;
             if (CurrentUser == null)
             {
-                (Application.Current.MainWindow as MainWindow)?.ShowNotification("⚠ Нужно войти в аккаунт, чтобы создать плейлист", false);
+                (Application.Current.MainWindow as MainWindow)?.ShowNotification("Нужно войти в аккаунт, чтобы создать плейлист", false);
                 return;
             }
 
@@ -295,11 +318,11 @@ namespace SpotifyLikePlayer.ViewModels
             if (newPlaylist != null)
             {
                 Playlists.Add(newPlaylist);
-                (Application.Current.MainWindow as MainWindow)?.ShowNotification($"📁 Плейлист «{newPlaylist.Name}» создан", true);
+                Notify($"Плейлист «{newPlaylist.Name}» создан", true);
                 if (song != null)
                 {
                     _dbService.AddSongToPlaylist(newPlaylist.PlaylistId, song.SongId);
-                    (Application.Current.MainWindow as MainWindow)?.ShowNotification($"🎶 Песня добавлена в «{newPlaylist.Name}»", true);
+                    Notify($"Песня добавлена в «{newPlaylist.Name}»", true);
                 }
             }
         }
@@ -331,12 +354,12 @@ namespace SpotifyLikePlayer.ViewModels
             var playlist = Playlists.FirstOrDefault(p => p.Name.Equals(chosen, StringComparison.OrdinalIgnoreCase));
             if (playlist == null)
             {
-                (Application.Current.MainWindow as MainWindow)?.ShowNotification("⚠ Плейлист не найден", false);
+                Notify("Плейлист не найден", false);
                 return;
             }
 
             _dbService.AddSongToPlaylist(playlist.PlaylistId, song.SongId);
-            (Application.Current.MainWindow as MainWindow)?.ShowNotification($"🎵 Песня добавлена в «{playlist.Name}»", true);
+            Notify($"Песня добавлена в «{playlist.Name}»", true);
 
         }
 
@@ -624,8 +647,8 @@ namespace SpotifyLikePlayer.ViewModels
                 var main = Application.Current.Windows.OfType<MainWindow>().FirstOrDefault();
                 main?.ShowNotification(
                     song.IsFavoriteLocal
-                        ? $"⭐ \"{song.Title}\" добавлена в избранное"
-                        : $"❌ \"{song.Title}\" удалена из избранного",
+                        ? $"\"{song.Title}\" добавлена в избранное"
+                        : $"\"{song.Title}\" удалена из избранного",
                     song.IsFavoriteLocal
                 );
             });

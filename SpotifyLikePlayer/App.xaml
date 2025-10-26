@@ -15,6 +15,7 @@
 			<conv:FavoriteColorConverter x:Key="FavoriteColorConverter"/>
 			<conv:FavoriteTooltipConverter x:Key="FavoriteTooltipConverter"/>
 			<conv:FavoriteSymbolConverter x:Key="FavoriteSymbolConverter"/>
+			<conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
 			<conv:FavoriteIconConverter x:Key="FavoriteIconConverter" />
 
 			<Style x:Key="FavoriteStarButton" TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">

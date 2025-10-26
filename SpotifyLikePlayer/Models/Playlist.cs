@@ -14,6 +14,8 @@ namespace SpotifyLikePlayer.Models
         public int UserId { get; set; }
         public DateTime CreatedDate { get; set; }
         public ObservableCollection<Song> Songs { get; set; }
+        public bool IsFavoriteList =>
+        Name.Equals("Favorite", StringComparison.OrdinalIgnoreCase);
 
         public Playlist()
         {

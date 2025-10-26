@@ -44,44 +44,101 @@ namespace SpotifyLikePlayer
                 vm?.LoadPlaylistSongs(selectedPlaylist);
             }
         }
-        public async void ShowNotification(string message, bool isPositive)
+        public async void ShowNotification(string message, bool isFavoriteLocal)
         {
-            if (NotificationText == null)
-                return;
-
-            // Меняем цвет текста в зависимости от статуса
-            NotificationText.Foreground = isPositive ? Brushes.LimeGreen : Brushes.OrangeRed;
             NotificationText.Text = message;
-            NotificationText.Opacity = 1;
-            NotificationText.Visibility = Visibility.Visible;
+            NotificationBorder.Visibility = Visibility.Visible;
 
-            // Плавное появление
-            var fadeIn = new DoubleAnimation
+            var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(250));
+            NotificationBorder.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+
+            await Task.Delay(3000);
+
+            var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(300));
+            fadeOut.Completed += (s, e) => NotificationBorder.Visibility = Visibility.Collapsed;
+            NotificationBorder.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+        }
+
+        private void SongsContextMenu_Opened(object sender, RoutedEventArgs e)
+        {
+            if (!(sender is ContextMenu cm)) return;
+
+            if (!(DataContext is MainViewModel vm)) return;
+
+            var list = cm.PlacementTarget as ListView;
+            Song song = list?.SelectedItem as Song;
+            if (song == null)
             {
-                From = 0,
-                To = 1,
-                Duration = TimeSpan.FromSeconds(0.3)
-            };
-            NotificationText.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+                var addMenu = cm.Items.OfType<MenuItem>().FirstOrDefault(mi => mi.Name == "AddToPlaylistMenu");
+                var remMenu = cm.Items.OfType<MenuItem>().FirstOrDefault(mi => mi.Name == "RemoveFromPlaylistMenu");
+                if (addMenu != null) { addMenu.Items.Clear(); addMenu.IsEnabled = false; }
+                if (remMenu != null) { remMenu.Items.Clear(); remMenu.IsEnabled = false; }
+                return;
+            }
 
-            // Показывается 2 секунды
-            await Task.Delay(2000);
+            var addMenuItem = cm.Items.OfType<MenuItem>().FirstOrDefault(mi => mi.Name == "AddToPlaylistMenu");
+            var removeMenuItem = cm.Items.OfType<MenuItem>().FirstOrDefault(mi => mi.Name == "RemoveFromPlaylistMenu");
 
-            // Плавное исчезновение
-            var fadeOut = new DoubleAnimation
+            if (addMenuItem != null)
             {
-                From = 1,
-                To = 0,
-                Duration = TimeSpan.FromSeconds(0.5),
-                FillBehavior = FillBehavior.Stop
-            };
+                addMenuItem.Items.Clear();
+                // Для каждого плейлиста — добавляем подпункт; если песня уже в плейлисте — отключаем пункт
+                foreach (var pl in vm.Playlists)
+                {
+                    // Проверяем наличие песни в плейлисте — читаем из БД (на случай, если vm.Playlists[].Songs не заполнен)
+                    var plSongs = vm._dbService.GetPlaylistSongs(pl.PlaylistId);
+                    bool contains = plSongs?.Any(s => s.SongId == song.SongId) ?? false;
 
-            fadeOut.Completed += (s, e) =>
+                    var sub = new MenuItem { Header = pl.Name, IsEnabled = !contains };
+                    // назначаем команду или обработчик
+                    if (vm.AddToPlaylistCommand != null)
+                    {
+                        sub.Command = vm.AddToPlaylistCommand;
+                        sub.CommandParameter = Tuple.Create(pl, song);
+                    }
+                    else
+                    {
+                        // если команды нет, повесим Click
+                        sub.Click += (_, __) => vm.AddToPlaylist(Tuple.Create(pl, song));
+                    }
+                    addMenuItem.Items.Add(sub);
+                }
+                addMenuItem.IsEnabled = addMenuItem.Items.Count > 0;
+            }
+
+            if (removeMenuItem != null)
             {
-                NotificationText.Visibility = Visibility.Collapsed;
-            };
+                removeMenuItem.Items.Clear();
+                // Добавим только те плейлисты, где песня есть
+                bool any = false;
+                foreach (var pl in vm.Playlists)
+                {
+                    var plSongs = vm._dbService.GetPlaylistSongs(pl.PlaylistId);
+                    bool contains = plSongs?.Any(s => s.SongId == song.SongId) ?? false;
+                    if (!contains) continue;
 
-            NotificationText.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+                    any = true;
+                    var sub = new MenuItem { Header = pl.Name, IsEnabled = true };
+                    if (vm.RemoveFromPlaylistCommand != null)
+                    {
+                        sub.Command = vm.RemoveFromPlaylistCommand;
+                        sub.CommandParameter = Tuple.Create(pl, song);
+                    }
+                    else
+                    {
+                        sub.Click += (_, __) => vm.RemoveFromPlaylist(Tuple.Create(pl, song));
+                    }
+                    removeMenuItem.Items.Add(sub);
+                }
+
+                if (!any)
+                {
+                    // если ни в одном — покажем disabled элемент "Нет в плейлистах"
+                    var none = new MenuItem { Header = "Песня не найдена в плейлистах", IsEnabled = false };
+                    removeMenuItem.Items.Add(none);
+                }
+                removeMenuItem.IsEnabled = removeMenuItem.Items.Count > 0;
+            }
         }
 
         private void FavoriteButton_Click(object sender, RoutedEventArgs e)

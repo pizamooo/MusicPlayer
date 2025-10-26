@@ -6,8 +6,9 @@
         xmlns:local="clr-namespace:SpotifyLikePlayer"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:converters="clr-namespace:SpotifyLikePlayer.Converters"
-		xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
-        mc:Ignorable="d"
+		xmlns:i="http://schemas.microsoft.com/xaml/behaviors" 
+		xmlns:componentModel="clr-namespace:System.ComponentModel;assembly=WindowsBase"
+		mc:Ignorable="d"
         Title="Player" Height="600" Width="860"
         DataContext="{Binding RelativeSource={RelativeSource Self}, Path=ViewModel}"
         WindowStartupLocation="CenterScreen" WindowState="Maximized" Topmost="False">
@@ -47,6 +48,42 @@
 				</Setter.Value>
 			</Setter>
 		</Style>
+		<Style TargetType="MenuItem">
+			<Setter Property="Background" Value="Transparent"/>
+			<Setter Property="Foreground" Value="White"/>
+			<Setter Property="FontSize" Value="13"/>
+			<Setter Property="Padding" Value="6,3"/>
+			<Setter Property="Cursor" Value="Hand"/>
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="MenuItem">
+						<Border Background="{TemplateBinding Background}"
+                            CornerRadius="4"
+                            Padding="4,2"
+                            Margin="1">
+							<ContentPresenter />
+						</Border>
+						<ControlTemplate.Triggers>
+							<Trigger Property="IsHighlighted" Value="True">
+								<Setter Property="Background" Value="#333"/>
+								<Setter Property="Foreground" Value="Lime"/>
+							</Trigger>
+							<Trigger Property="IsEnabled" Value="False">
+								<Setter Property="Foreground" Value="#777"/>
+							</Trigger>
+						</ControlTemplate.Triggers>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+		</Style>
+		<CollectionViewSource x:Key="PlaylistsViewSource" Source="{Binding Playlists}">
+			<CollectionViewSource.SortDescriptions>
+				<componentModel:SortDescription PropertyName="Name" Direction="Ascending" />
+			</CollectionViewSource.SortDescriptions>
+			<CollectionViewSource.GroupDescriptions>
+				<PropertyGroupDescription PropertyName="IsFavoriteList" />
+			</CollectionViewSource.GroupDescriptions>
+		</CollectionViewSource>
 	</Window.Resources>
 	<Grid Background="MediumPurple">
 		<Grid.ColumnDefinitions>
@@ -79,12 +116,12 @@
 						<TextBlock Text="{Binding PlayerService.CurrentSong.Title, TargetNullValue='Unknown Title'}" 
                                    Foreground="White" FontWeight="Bold" FontSize="16"/>
 						<TextBlock Text="{Binding PlayerService.CurrentSong.Artist.Name, TargetNullValue='Unknown Artist'}" 
-                                   Foreground="LimeGreen" FontSize="14" FontWeight="SemiBold"/>
+                                   Foreground="LimeGreen" FontSize="14" FontWeight="SemiBold" Cursor=""/>
 						<TextBlock Text="{Binding PlayerService.CurrentSong.Album.Title, TargetNullValue='Unknown Album'}" 
                                    Foreground="LimeGreen" FontSize="12"/>
 					</StackPanel>
 				</StackPanel>
-				<TextBox Grid.Column="1" materialDesign:HintAssist.Hint="Search any track..." 
+				<TextBox Grid.Column="1" materialDesign:HintAssist.Hint="Поиск любого трека..." 
                          TextChanged="Search_TextChanged" 
                          Width="500" Height="60" FontSize="20" Foreground="White"
                          VerticalAlignment="Center" HorizontalAlignment="Center" />
@@ -94,7 +131,6 @@
 		<!-- Sidebar: Navigation -->
 		<StackPanel Grid.Column="0" Grid.Row="1" Background="#121212">
 			<Button Content="Home" Margin="5,5,5,5" Command="{Binding HomeCommand}"/>
-			<Button Content="Favorite" Margin="5,5,5,5" Command="{Binding ShowFavoriteCommand}"/>
 			<TextBlock Text="Плейлисты" Foreground="White" FontSize="20"
                FontWeight="Bold" Margin="10,10,0,10"/>
 			<ListBox x:Name="PlaylistsListBox"
@@ -102,11 +138,27 @@
          ItemsSource="{Binding Playlists}"
          SelectedItem="{Binding SelectedPlaylist}"
          Background="#121212"
-         Foreground="White">
+         Foreground="White"
+         BorderThickness="0">
 
 				<ListBox.ItemTemplate>
 					<DataTemplate>
-						<TextBlock Text="{Binding Name}" FontSize="18" Padding="8" />
+						<TextBlock Text="{Binding Name}"
+                       FontSize="18"
+                       Padding="8"
+                       FontWeight="SemiBold">
+							<TextBlock.Style>
+								<Style TargetType="TextBlock">
+									<Setter Property="Foreground" Value="White"/>
+									<Style.Triggers>
+										<!-- Favorite — выделить цветом Lime -->
+										<DataTrigger Binding="{Binding Name}" Value="Favorite">
+											<Setter Property="Foreground" Value="Lime"/>
+										</DataTrigger>
+									</Style.Triggers>
+								</Style>
+							</TextBlock.Style>
+						</TextBlock>
 					</DataTemplate>
 				</ListBox.ItemTemplate>
 
@@ -159,11 +211,21 @@
 							</GridViewColumn.CellTemplate>
 						</GridViewColumn>
 
-						<GridViewColumn Header="Title" DisplayMemberBinding="{Binding Title}" Width="300" />
-						<GridViewColumn Header="Artist" DisplayMemberBinding="{Binding Artist.Name}" Width="300" />
-						<GridViewColumn Header="Album" DisplayMemberBinding="{Binding Album.Title}" Width="300" />
-						<GridViewColumn Header="Genre" DisplayMemberBinding="{Binding Genre}" Width="250" />
-						<GridViewColumn Header="Duration" DisplayMemberBinding="{Binding Duration, StringFormat={}{0:mm\\:ss}}" Width="150" />
+						<GridViewColumn Header="Название" DisplayMemberBinding="{Binding Title}" Width="300" />
+						<GridViewColumn Header="Артист" DisplayMemberBinding="{Binding Artist.Name}" Width="300" />
+						<GridViewColumn Header="Альбом" DisplayMemberBinding="{Binding Album.Title}" Width="300" />
+						<GridViewColumn Header="Жанр" DisplayMemberBinding="{Binding Genre}" Width="250" />
+						<GridViewColumn Width="150">
+							<GridViewColumn.Header>
+								<StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+									<materialDesign:PackIcon Kind="ClockOutline" Width="18" Height="18" Foreground="White" />
+								</StackPanel>
+							</GridViewColumn.Header>
+
+							<GridViewColumn.DisplayMemberBinding>
+								<Binding Path="Duration" StringFormat="{}{0:mm\:ss}" />
+							</GridViewColumn.DisplayMemberBinding>
+						</GridViewColumn>
 
 						<GridViewColumn Width="150">
 							<GridViewColumn.CellTemplate>
@@ -180,65 +242,31 @@
 
 				<!-- Контекстное меню песен -->
 				<ListView.ContextMenu>
-					<ContextMenu
-                DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-
-						<!-- Добавление в существующий плейлист -->
-						<MenuItem Header="Добавить в плейлист">
-							<MenuItem.ItemsSource>
-								<Binding Path="Playlists" />
-							</MenuItem.ItemsSource>
-							<MenuItem.ItemContainerStyle>
-								<Style TargetType="MenuItem">
-									<Setter Property="Header" Value="{Binding Name}" />
-									<Setter Property="Command"
-                                    Value="{Binding DataContext.AddToPlaylistCommand,
-                                                    RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-									<Setter Property="CommandParameter">
-										<Setter.Value>
-											<MultiBinding Converter="{StaticResource SongPlaylistTupleConverter}">
-												<!-- Плейлист -->
-												<Binding />
-												<!-- Песня -->
-												<Binding Path="PlacementTarget.SelectedItem"
-                                                 RelativeSource="{RelativeSource AncestorType=ContextMenu}" />
-											</MultiBinding>
-										</Setter.Value>
-									</Setter>
-								</Style>
-							</MenuItem.ItemContainerStyle>
+					<ContextMenu Opened="SongsContextMenu_Opened"
+                 Background="#2a2a2a"
+                 Foreground="White"
+                 BorderBrush="#444"
+                 BorderThickness="1"
+                 FontSize="14">
+						<MenuItem x:Name="AddToPlaylistMenu"
+                  Header="Добавить в плейлист"
+                  Foreground="LimeGreen">
 						</MenuItem>
 
-						<Separator />
-						<!-- 🗑 Удалить из плейлиста -->
-						<MenuItem Header="Удалить из плейлиста">
-							<MenuItem.ItemsSource>
-								<Binding Path="Playlists" />
-							</MenuItem.ItemsSource>
-							<MenuItem.ItemContainerStyle>
-								<Style TargetType="MenuItem">
-									<Setter Property="Header" Value="{Binding Name}" />
-									<Setter Property="Command"
-                    Value="{Binding DataContext.RemoveFromPlaylistCommand,
-                                    RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-									<Setter Property="CommandParameter">
-										<Setter.Value>
-											<MultiBinding Converter="{StaticResource SongPlaylistTupleConverter}">
-												<!-- Плейлист -->
-												<Binding />
-												<!-- Песня -->
-												<Binding Path="PlacementTarget.SelectedItem"
-                                 RelativeSource="{RelativeSource AncestorType=ContextMenu}" />
-											</MultiBinding>
-										</Setter.Value>
-									</Setter>
-								</Style>
-							</MenuItem.ItemContainerStyle>
+						<MenuItem x:Name="RemoveFromPlaylistMenu"
+                  Header="Удалить из плейлиста"
+                  Foreground="#ff5555">
 						</MenuItem>
-						<!-- Создать новый плейлист -->
+						<Separator Margin="3,2"/>
 						<MenuItem Header="Создать новый плейлист"
-                          Command="{Binding CreatePlaylistCommand}" />
-
+                  Command="{Binding CreatePlaylistCommand}"
+                  Foreground="LightSkyBlue">
+							<MenuItem.Icon>
+								<materialDesign:PackIcon Kind="PlaylistPlus"
+                                         Width="18" Height="18"
+                                         Foreground="LightSkyBlue" />
+							</MenuItem.Icon>
+						</MenuItem>
 					</ContextMenu>
 				</ListView.ContextMenu>
 			</ListView>
@@ -309,20 +337,6 @@
     BorderThickness="0"
     Command="{Binding ToggleFavoriteCommand}"
     CommandParameter="{Binding PlayerService.CurrentSong}" />
-					<TextBlock x:Name="NotificationText"
-           Text=""
-           Foreground="White"
-           FontSize="18"
-           FontWeight="Bold"
-           HorizontalAlignment="Center"
-           VerticalAlignment="Bottom"
-           Margin="0,0,0,30"
-           Background="#99000000"
-           Padding="10,5"
-           Opacity="0"
-           Visibility="Collapsed"
-           TextWrapping="Wrap"
-           TextAlignment="Center"/>
 				</StackPanel>
 
 				<!-- Volume Slider (короткий, справа) -->
@@ -336,5 +350,25 @@
 				</StackPanel>
 			</Grid>
 		</materialDesign:Card>
+		<Border Grid.Row="2" Grid.ColumnSpan="2" x:Name="NotificationBorder"
+        Background="#AA000000"
+        CornerRadius="8"
+        Padding="14,8"
+        Margin="20,0,0,20"
+        HorizontalAlignment="Left"
+        VerticalAlignment="Bottom"
+        Visibility="Collapsed"
+        Opacity="0"
+        Panel.ZIndex="9999"
+        IsHitTestVisible="False"
+        MaxWidth="800">
+			<!-- ограничим ширину -->
+			<TextBlock x:Name="NotificationText"
+               Foreground="Lime"
+               FontSize="16"
+               FontWeight="SemiBold"
+               TextWrapping="Wrap"
+               TextTrimming="CharacterEllipsis" />
+		</Border>
 	</Grid>
 </Window>

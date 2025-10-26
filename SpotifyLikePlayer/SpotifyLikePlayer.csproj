@@ -195,6 +195,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Converters\BoolToVisibilityConverter.cs" />
     <Compile Include="Converters\FavoriteConverters.cs" />
     <Compile Include="Converters\SecondsToTimeConverter.cs" />
     <Compile Include="Converters\SongPlaylistTupleConverter.cs" />
