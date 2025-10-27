@@ -21,6 +21,74 @@ namespace SpotifyLikePlayer.Services
     {
         public readonly string _connectionString = ConfigurationManager.ConnectionStrings["MusicDB"].ConnectionString;
 
+        public ObservableCollection<Song> GetSongsByGenre(string genre)
+        {
+            var songs = new ObservableCollection<Song>();
+
+            using (SqlConnection conn = new SqlConnection(_connectionString))
+            {
+                conn.Open();
+
+                string query = @"
+            SELECT s.SongId, s.Title, s.FilePath, s.Duration, s.Genre,
+                   a.ArtistId, a.Name AS ArtistName,
+                   al.AlbumId, al.Title AS AlbumTitle, al.ReleaseYear
+            FROM Songs s
+            JOIN Artists a ON s.ArtistId = a.ArtistId
+            JOIN Albums al ON s.AlbumId = al.AlbumId
+            WHERE s.Genre = @Genre";  // фильтрация по жанру
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@Genre", genre);
+
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            TimeSpan duration;
+                            int durationOrdinal = reader.GetOrdinal("Duration");
+                            if (!reader.IsDBNull(durationOrdinal))
+                            {
+                                duration = reader.GetTimeSpan(durationOrdinal);
+                            }
+                            else
+                            {
+                                duration = TimeSpan.Zero;
+                            }
+
+                            var song = new Song
+                            {
+                                SongId = (int)reader["SongId"],
+                                Title = reader["Title"].ToString(),
+                                FilePath = reader["FilePath"].ToString(),
+                                Duration = duration,
+                                Genre = reader["Genre"].ToString(),
+                                ArtistId = (int)reader["ArtistId"],
+                                Artist = new Artist
+                                {
+                                    ArtistId = (int)reader["ArtistId"],
+                                    Name = reader["ArtistName"].ToString()
+                                },
+                                AlbumId = (int)reader["AlbumId"],
+                                Album = new Album
+                                {
+                                    AlbumId = (int)reader["AlbumId"],
+                                    Title = reader["AlbumTitle"].ToString(),
+                                    ReleaseYear = (int)reader["ReleaseYear"]
+                                }
+                            };
+
+                            song.CoverImage = GetCoverImage(song.FilePath);
+                            songs.Add(song);
+                        }
+                    }
+                }
+            }
+
+            return songs;
+        }
+
         public ObservableCollection<Playlist> GetPlaylists(int? userId = null)
         {
             var playlists = new ObservableCollection<Playlist>();

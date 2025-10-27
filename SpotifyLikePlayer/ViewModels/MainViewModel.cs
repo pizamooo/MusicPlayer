@@ -135,6 +135,23 @@ namespace SpotifyLikePlayer.ViewModels
             };
         }
 
+        public void LoadSongsByGenre(string genre)
+        {
+            try
+            {
+                Songs.Clear();
+
+                var filteredSongs = _dbService.GetSongsByGenre(genre);
+
+                foreach (var song in filteredSongs)
+                    Songs.Add(song);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка при загрузке песен по жанру {genre}: {ex.Message}");
+            }
+        }
+
         private void Notify(string message, bool isPositive = true)
         {
             Application.Current.Dispatcher.Invoke(() =>
@@ -237,7 +254,7 @@ namespace SpotifyLikePlayer.ViewModels
         {
             if (CurrentUser == null)
             {
-                (Application.Current.MainWindow as MainWindow)?.ShowNotification("Нужно войти в аккаунт, чтобы создать плейлист.", false);
+                Notify("Нужно войти в аккаунт, чтобы создать плейлист.", false);
                 return;
             }
 
@@ -809,16 +826,22 @@ namespace SpotifyLikePlayer.ViewModels
         {
             if (string.IsNullOrEmpty(searchText))
             {
-                Songs = SelectedPlaylist != null ? _dbService.GetPlaylistSongs(SelectedPlaylist.PlaylistId) : _dbService.GetSongs();
+                Songs = SelectedPlaylist != null
+                    ? _dbService.GetPlaylistSongs(SelectedPlaylist.PlaylistId)
+                    : _dbService.GetSongs();
             }
             else
             {
                 var allSongs = _dbService.GetSongs();
-                Songs = new ObservableCollection<Song>(allSongs.Where(s =>
-                    s.Title.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >=0 ||
-                    s.Artist.Name.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >=0 ||
-                    s.Genre.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >=0));
+                Songs = new ObservableCollection<Song>(
+                    allSongs.Where(s =>
+                        s.Title.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        s.Artist.Name.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        s.Album.Title.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        s.Genre.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0)
+                );
             }
+
             OnPropertyChanged(nameof(Songs));
         }
 
@@ -827,58 +850,73 @@ namespace SpotifyLikePlayer.ViewModels
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        public void AddSongsFromDirectory(string directoryPath = DefaultMusicPath)
+        public async Task AddSongsFromDirectory(string directoryPath)
         {
             if (!Directory.Exists(directoryPath))
-            {
                 return;
-            }
 
-            var musicFiles = Directory.GetFiles(directoryPath, "*.*", SearchOption.TopDirectoryOnly)
-                .Where(f => f.EndsWith(".mp3") || f.EndsWith(".wav"));  // Поддержка MP3/WAV
+            var files = Directory.GetFiles(directoryPath, "*.mp3", SearchOption.AllDirectories);
 
-            foreach (var file in musicFiles)
+            foreach (var file in files)
             {
-                if (_dbService.SongExists(file)) continue;  // Пропустить, если уже в БД
-
                 try
                 {
-                    using (var tagFile = TagLib.File.Create(file))  // TagLib.File
+                    // Пропускаем, если трек уже есть
+                    if (_dbService.SongExists(file))
+                        continue;
+
+                    using (var tagFile = TagLib.File.Create(file))
                     {
-                        var tags = tagFile.Tag;
-                        var artistName = tags.Performers.FirstOrDefault() ?? "Unknown Artist";
-                        var albumTitle = tags.Album ?? "Without Album";
+                        // Заголовок
+                        string title = !string.IsNullOrWhiteSpace(tagFile.Tag.Title)
+                            ? tagFile.Tag.Title
+                            : Path.GetFileNameWithoutExtension(file);
 
+                        // Исполнитель
+                        string artistName = tagFile.Tag.FirstPerformer ?? "Unknown Artist";
                         int artistId = _dbService.AddOrGetArtist(artistName);
-                        int albumId = _dbService.AddOrGetAlbum(albumTitle, artistId, (int)(tags.Year > 0 ? tags.Year : 0));
 
-                        string coverPath = null;
-                        if (tagFile.Tag.Pictures.Length > 0)
-                        {
-                            var picture = tagFile.Tag.Pictures[0];
-                            coverPath = Path.Combine(Path.GetDirectoryName(file), $"{Path.GetFileNameWithoutExtension(file)}_cover.jpg");
-                            System.IO.File.WriteAllBytes(coverPath, picture.Data.Data);
-                        }
+                        // Альбом
+                        string albumTitle = tagFile.Tag.Album ?? "Single";
+                        int albumId = _dbService.AddOrGetAlbum(albumTitle, artistId);
 
+                        // Жанр
+                        string genre = tagFile.Tag.FirstGenre ?? "Unknown";
+
+                        // Длительность (в секундах)
+                        TimeSpan duration = tagFile.Properties.Duration;
+
+                        // Создаём объект песни
                         var song = new Song
                         {
-                            Title = tags.Title ?? Path.GetFileNameWithoutExtension(file),
+                            Title = title,
                             ArtistId = artistId,
                             AlbumId = albumId,
+                            Genre = genre,
                             FilePath = file,
-                            Duration = tagFile.Properties.Duration,
-                            Genre = tags.Genres.FirstOrDefault() ?? "Unknown"
+                            Duration = TimeSpan.FromSeconds(Math.Round(tagFile.Properties.Duration.TotalSeconds, 0)),
+                            Artist = new Artist { ArtistId = artistId, Name = artistName },
+                            Album = new Album { AlbumId = albumId, Title = albumTitle },
+                            CoverImage = _dbService.GetCoverImage(file)
                         };
-                        song.CoverImage = _dbService.GetCoverImage(file);
+
+                        // Добавляем в БД
                         _dbService.AddSong(song);
-                        Songs.Add(song);
+
+                        // Добавляем в коллекцию UI
+                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                        {
+                            Songs.Add(song);
+                        });
                     }
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Ошибка при обработке {file}: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Ошибка при обработке файла {file}: {ex.Message}");
                 }
             }
+
+            // Обновляем UI
             OnPropertyChanged(nameof(Songs));
         }
 

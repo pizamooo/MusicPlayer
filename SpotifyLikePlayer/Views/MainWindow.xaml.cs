@@ -26,6 +26,8 @@ namespace SpotifyLikePlayer
     /// </summary>
     public partial class MainWindow : Window
     {
+        private List<Song> _lastSearchResults = new List<Song>();
+
         public MainViewModel ViewModel { get; set; }
         public MainWindow(MainViewModel vm)
         {
@@ -34,6 +36,274 @@ namespace SpotifyLikePlayer
             InitializeComponent();
             ProgressSlider.MouseMove += ProgressSlider_MouseMove;
             ToolTipService.SetInitialShowDelay(ProgressSlider, 0);
+
+            SuggestionsList.PreviewMouseWheel += SuggestionsList_PreviewMouseWheel;
+
+            SuggestionsList.PreviewMouseLeftButtonUp += SuggestionsList_PreviewMouseLeftButtonUp;
+        }
+
+        private async void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            string text = SearchBox.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                SuggestionsPopup.IsOpen = false;
+                ResetSongsList();
+                return;
+            }
+
+            var results = await Task.Run(() =>
+            {
+                try
+                {
+                    var allSongs = ViewModel._dbService.GetSongs();
+                    return allSongs
+                        .Where(s =>
+                            (s.Title ?? string.Empty).IndexOf(text, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                            (s.Artist?.Name ?? string.Empty).IndexOf(text, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                            (s.Album?.Title ?? string.Empty).IndexOf(text, StringComparison.OrdinalIgnoreCase) >= 0)
+                        .ToList();
+                }
+                catch
+                {
+                    return new List<Song>();
+                }
+            });
+
+            _lastSearchResults = results;
+
+            var suggestions = _lastSearchResults.Take(12).ToList();
+            SuggestionsList.ItemsSource = suggestions;
+            SuggestionsPopup.IsOpen = suggestions.Any();
+
+            UpdateSongsList(results);
+        }
+
+        private void SuggestionsList_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (SuggestionsList.SelectedItem is Song selected)
+            {
+                SelectSuggestion(selected);
+                e.Handled = true;
+            }
+        }
+
+        private void SuggestionsList_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (SuggestionsList.SelectedItem is Song selectedSong)
+            {
+                SelectSuggestion(selectedSong);
+            }
+        }
+
+        private void SelectSuggestion(Song selected)
+        {
+            try
+            {
+                if (selected == null) return;
+
+                // Закрываем popup
+                SuggestionsPopup.IsOpen = false;
+
+                // Ставим текст в SearchBox (для красоты)
+                SearchBox.Text = selected.Title;
+
+                // Обновляем список песен (можно все найденные или только эту)
+                UpdateSongsList(new List<Song> { selected });
+
+                // Выделяем её в таблице
+                SongsListView.SelectedItem = selected;
+                SongsListView.ScrollIntoView(selected);
+
+                // Снимаем фокус с TextBox
+                Keyboard.ClearFocus();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"SelectSuggestion error: {ex}");
+            }
+        }
+
+        private void SearchBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                // Если открыт Popup и выбрана подсказка — применяем её
+                if (SuggestionsPopup.IsOpen && SuggestionsList.SelectedItem is Song selectedSong)
+                {
+                    SelectSuggestion(selectedSong);
+                    SuggestionsPopup.IsOpen = false;
+                    e.Handled = true;
+                    return;
+                }
+
+                // Иначе — выполняем обычный поиск по введённому тексту
+                string query = SearchBox.Text?.Trim();
+                if (string.IsNullOrEmpty(query))
+                {
+                    ResetSongsList();
+                    SuggestionsPopup.IsOpen = false;
+                    e.Handled = true;
+                    return;
+                }
+
+                var allSongs = ViewModel._dbService.GetSongs();
+                var found = allSongs
+                    .Where(s =>
+                        (s.Title ?? string.Empty).IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        (s.Artist?.Name ?? string.Empty).IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        (s.Album?.Title ?? string.Empty).IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0)
+                    .ToList();
+
+                UpdateSongsList(found);
+
+                SuggestionsPopup.IsOpen = false;
+                Keyboard.ClearFocus();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Down)
+            {
+                // Навигация вниз по списку подсказок
+                if (SuggestionsPopup.IsOpen && SuggestionsList.Items.Count > 0)
+                {
+                    int idx = SuggestionsList.SelectedIndex;
+                    idx = Math.Min(SuggestionsList.Items.Count - 1, Math.Max(0, idx + 1));
+                    SuggestionsList.SelectedIndex = idx;
+                    SuggestionsList.ScrollIntoView(SuggestionsList.SelectedItem);
+                    e.Handled = true;
+                }
+            }
+            else if (e.Key == Key.Up)
+            {
+                // Навигация вверх по списку подсказок
+                if (SuggestionsPopup.IsOpen && SuggestionsList.Items.Count > 0)
+                {
+                    int idx = SuggestionsList.SelectedIndex;
+                    idx = Math.Max(0, idx - 1);
+                    SuggestionsList.SelectedIndex = idx;
+                    SuggestionsList.ScrollIntoView(SuggestionsList.SelectedItem);
+                    e.Handled = true;
+                }
+            }
+        }
+
+        private void SuggestionsList_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (!SuggestionsPopup.IsOpen) return;
+            if (!(sender is ListBox lb)) return;
+            if (lb.Items.Count == 0) return;
+
+            int delta = e.Delta > 0 ? -1 : 1; // вверх уменьшает индекс
+            int idx = lb.SelectedIndex;
+            if (idx < 0) idx = 0;
+            idx += delta;
+            idx = Math.Max(0, Math.Min(lb.Items.Count - 1, idx));
+            lb.SelectedIndex = idx;
+            lb.ScrollIntoView(lb.SelectedItem);
+            e.Handled = true;
+        }
+
+        private void UpdateSongsList(List<Song> songs)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                ViewModel.Songs.Clear();
+                foreach (var s in songs)
+                    ViewModel.Songs.Add(s);
+
+                ViewModel.OnPropertyChanged(nameof(ViewModel.Songs));
+            });
+        }
+
+        private void ResetSongsList()
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (ViewModel.SelectedPlaylist != null)
+                {
+                    var plSongs = ViewModel._dbService.GetPlaylistSongs(ViewModel.SelectedPlaylist.PlaylistId)
+                                  ?? new ObservableCollection<Song>();
+                    ViewModel.Songs.Clear();
+                    foreach (var s in plSongs)
+                        ViewModel.Songs.Add(s);
+                }
+                else
+                {
+                    var all = ViewModel._dbService.GetSongs() ?? new ObservableCollection<Song>();
+                    ViewModel.Songs.Clear();
+                    foreach (var s in all)
+                        ViewModel.Songs.Add(s);
+                }
+                ViewModel.OnPropertyChanged(nameof(ViewModel.Songs));
+            });
+        }
+
+        private void PerformSearch(string query)
+        {
+            if (string.IsNullOrEmpty(query))
+            {
+                ViewModel.Songs = ViewModel.SelectedPlaylist != null
+                    ? ViewModel._dbService.GetPlaylistSongs(ViewModel.SelectedPlaylist.PlaylistId)
+                    : ViewModel._dbService.GetSongs();
+            }
+            else
+            {
+                var allSongs = ViewModel._dbService.GetSongs();
+                var foundSongs = allSongs
+                    .Where(s =>
+                        s.Title.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        s.Artist.Name.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        s.Album.Title.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0)
+                    .ToList();
+
+                ViewModel.Songs.Clear();
+                foreach (var song in foundSongs)
+                    ViewModel.Songs.Add(song);
+            }
+
+            ViewModel.OnPropertyChanged(nameof(ViewModel.Songs));
+        }
+
+        private void ChangeGenreButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Создаем простое контекстное меню
+            var menu = new ContextMenu();
+
+            var genres = new List<string> { "Hip-Hop", "Rock", "Metal", "Pop" };
+
+            foreach (var genre in genres)
+            {
+                var item = new MenuItem
+                {
+                    Header = genre,
+                    Foreground = Brushes.Lime,
+                    FontSize = 14,
+                    Icon = new MaterialDesignThemes.Wpf.PackIcon
+                    {
+                        Kind = MaterialDesignThemes.Wpf.PackIconKind.MusicNote,
+                        Foreground = Brushes.Lime,
+                        Width = 18,
+                        Height = 18
+                    }
+                };
+
+                // при выборе жанра
+                item.Click += (s, ev) =>
+                {
+                    // тут подгружаем песни по жанру
+                    ViewModel.LoadSongsByGenre(genre);
+
+                    // уведомление
+                    ShowNotification($"Показаны треки жанра: {genre}", true);
+                };
+
+                menu.Items.Add(item);
+            }
+
+            // Привязываем контекстное меню к кнопке
+            menu.PlacementTarget = ChangeGenreButton;
+            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            menu.IsOpen = true;
         }
 
         private void PlaylistsListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -174,30 +444,22 @@ namespace SpotifyLikePlayer
             }
         }
 
-        private void Search_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            var textBox = sender as TextBox;
-            ViewModel.SearchSongs(textBox?.Text);
-        }
-
         private void ProgressSlider_MouseMove(object sender, MouseEventArgs e)
         {
             if (sender is Slider slider)
             {
-                // Рассчитываем позицию курсора относительно слайдера
                 var position = e.GetPosition(slider);
                 double ratio = position.X / slider.ActualWidth;
-                double hoveredSeconds = slider.Maximum * Math.Max(0, Math.Min(1, ratio)); // Ограничиваем 0-1
+                double hoveredSeconds = slider.Maximum * Math.Max(0, Math.Min(1, ratio));
                 TimeSpan hoveredTime = TimeSpan.FromSeconds(hoveredSeconds);
                 string timeString = hoveredTime.ToString("mm\\:ss");
 
-                // Обновляем ToolTip в реальном времени
                 ToolTipService.SetToolTip(slider, timeString);
                 ToolTipService.SetIsEnabled(slider, true);
                 ToolTipService.SetPlacement(slider, PlacementMode.Relative);
-                ToolTipService.SetVerticalOffset(slider, -30); // Смещение для видимости
-                ToolTipService.SetHorizontalOffset(slider, position.X - 20); // Следует за курсором
-                ToolTipService.SetShowDuration(slider, 10000); // Показывать 10 секунд
+                ToolTipService.SetVerticalOffset(slider, -30);
+                ToolTipService.SetHorizontalOffset(slider, position.X - 20);
+                ToolTipService.SetShowDuration(slider, 10000);
             }
         }
 
