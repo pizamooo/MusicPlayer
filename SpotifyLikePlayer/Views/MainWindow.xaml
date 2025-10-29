@@ -10,7 +10,7 @@
 		xmlns:componentModel="clr-namespace:System.ComponentModel;assembly=WindowsBase"
 		xmlns:models="clr-namespace:SpotifyLikePlayer.Models"
 		mc:Ignorable="d"
-        Title="Player" Height="600" Width="860"
+        Title="PATHTRACK" Height="600" Width="860"
         DataContext="{Binding RelativeSource={RelativeSource Self}, Path=ViewModel}"
         WindowStartupLocation="CenterScreen" WindowState="Maximized" Topmost="False">
 	<Window.Resources>
@@ -150,17 +150,31 @@
                                    Foreground="LimeGreen" FontSize="12"/>
 					</StackPanel>
 				</StackPanel>
+				<!-- Текст состояния -->
+				<TextBlock Grid.ColumnSpan="3" x:Name="MusicContextText"
+               Text="Вся музыка"
+               FontSize="22"
+               FontWeight="SemiBold"
+               Foreground="White"
+               VerticalAlignment="Center"
+						   Margin="1070,10,0,0"
+               Opacity="0.85"/>
+
 				<TextBox Grid.Column="1" x:Name="SearchBox"
-             Width="500"
-             Height="60"
-             FontSize="20"
+             Width="400"
+             Height="38"
+             FontSize="18"
+						 Padding="10,2,10,2"
+						 Background="#222"
+						 BorderBrush="#444"
+						 BorderThickness="1"
              Foreground="White"
              VerticalAlignment="Center"
              HorizontalAlignment="Center"
              materialDesign:HintAssist.Hint="Поиск трека, исполнителя или альбома..."
              TextChanged="SearchBox_TextChanged"
              KeyDown="SearchBox_KeyDown"
-             />
+			 GotFocus="SearchBox_GotFocus"/>
 
 				<!-- Красивый Popup для подсказок -->
 				<Popup x:Name="SuggestionsPopup"
@@ -252,7 +266,7 @@
 					<Button.Content>
 						<StackPanel Orientation="Horizontal">
 							<materialDesign:PackIcon Kind="Music" Width="20" Height="20" Margin="0,0,6,0" Foreground="Lime"/>
-							<TextBlock Text="Изменить жанр"/>
+							<TextBlock Text="Изменить жанр для вас"/>
 						</StackPanel>
 					</Button.Content>
 				</Button>
@@ -261,7 +275,7 @@
 
 		<!-- Sidebar: Navigation -->
 		<StackPanel Grid.Column="0" Grid.Row="1" Background="#121212">
-			<Button Content="Home" Margin="5,5,5,5" Command="{Binding HomeCommand}"/>
+			<Button Content="Home" Click="HomeButton_Click" Margin="5,5,5,5" Command="{Binding HomeCommand}"/>
 			<TextBlock Text="Плейлисты" Foreground="White" FontSize="20"
                FontWeight="Bold" Margin="10,10,0,10"/>
 			<ListBox x:Name="PlaylistsListBox"
@@ -294,7 +308,7 @@
 				</ListBox.ItemTemplate>
 
 				<ListBox.ContextMenu>
-					<!-- ✅ Привязываем контекст меню к окну -->
+					<!-- Привязываем контекст меню к окну -->
 					<ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
 						<MenuItem Header="Удалить плейлист"
                       Command="{Binding DeletePlaylistCommand}"
@@ -303,9 +317,92 @@
 				</ListBox.ContextMenu>
 			</ListBox>
 		</StackPanel>
+		
 
 		<!-- Main Content: Song List -->
 		<Grid Grid.Column="1" Grid.Row="1">
+
+			<Border x:Name="SongInfoPanel"
+        Background="#1E1E1E"
+        Height="180"
+        Padding="20"
+        Margin="0,10,0,0"
+        Visibility="Collapsed"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Top"
+        Width="800"
+        CornerRadius="10"
+        Panel.ZIndex="10">
+				<Border.RenderTransform>
+					<TranslateTransform Y="-200"/>
+				</Border.RenderTransform>
+
+				<Grid>
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="160"/>
+						<ColumnDefinition Width="*"/>
+					</Grid.ColumnDefinitions>
+
+					<!-- Обложка -->
+					<Border CornerRadius="6" Margin="0,0,20,0">
+						<Image Source="{Binding SelectedSong.CoverImage}"
+                   Width="160" Height="160"
+                   Stretch="UniformToFill"
+                   HorizontalAlignment="Left"
+                   VerticalAlignment="Center"/>
+					</Border>
+
+					<!-- Информация о песне -->
+					<StackPanel Grid.Column="1"
+                    Orientation="Vertical"
+                    VerticalAlignment="Center"
+                    Margin="10,0,0,0">
+						<TextBlock Text="{Binding SelectedSong.Title}"
+                       FontSize="22"
+                       FontWeight="Bold"
+                       Foreground="White"
+                       Margin="0,0,0,0"/>
+
+						<TextBlock Text="{Binding SelectedSong.Artist.Name}"
+                       FontSize="16"
+                       Foreground="#CCCCCC"/>
+
+						<TextBlock Text="{Binding SelectedSong.Album.Title}"
+                       FontSize="14"
+                       Foreground="#AAAAAA"
+                       Margin="0,4,0,0"/>
+
+						<StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+							<TextBlock Text="{Binding SelectedSong.Album.ReleaseYear, StringFormat='Год: {0}'}"
+                           Foreground="#AAAAAA" Margin="0,0,16,0"/>
+							<TextBlock Text="{Binding SelectedSong.Genre, StringFormat='Жанр: {0}'}"
+                           Foreground="#AAAAAA" Margin="0,0,16,0"/>
+						</StackPanel>
+
+						<StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+							<Button Content="Перейти к альбому"
+                        Click="GoToAlbum_Click"
+                        Background="#3A3A3A"
+                        Foreground="White"
+                        BorderBrush="LimeGreen"
+                        BorderThickness="1"
+                        Padding="10,4"
+                        Margin="0,0,10,10"
+                        Cursor="Hand"/>
+							<Button Content="Закрыть"
+                        Click="CloseSongInfo_Click"
+                        Background="Transparent"
+                        Foreground="#AAAAAA"
+                        BorderBrush="#666"
+                        BorderThickness="1"
+                        Padding="10,4"
+						Margin="0,0,10,10"
+                        Cursor="Hand"/>
+						</StackPanel>
+					</StackPanel>
+				</Grid>
+			</Border>
+
 			<ListView x:Name="SongsListView"
               ItemsSource="{Binding Songs}"
               SelectedItem="{Binding SelectedSong}"
@@ -379,6 +476,7 @@
                  BorderBrush="#444"
                  BorderThickness="1"
                  FontSize="14">
+						<MenuItem Header="Информация о песне" Click="SongsListView_ShowDetails_Click"/>
 						<MenuItem x:Name="AddToPlaylistMenu"
                   Header="Добавить в плейлист"
                   Foreground="LimeGreen">
@@ -417,6 +515,19 @@
 
 				<!-- Buttons and Progress Slider -->
 				<StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Cursor="">
+					<Button x:Name="RepeatModeButton"
+        Width="60"
+        Height="40"
+        Background="Transparent"
+        BorderBrush="{x:Null}"
+        Click="RepeatButton_Click"
+        ToolTip="Режим повтора">
+						<materialDesign:PackIcon x:Name="RepeatIcon"
+                             Kind="Repeat"
+                             Foreground="White"
+                             Width="28"
+                             Height="28"/>
+					</Button>
 					<Button Command="{Binding PreviousCommand}" Margin="5">
 						<materialDesign:PackIcon Kind="SkipPrevious" Width="24" Height="24" Foreground="White" />
 					</Button>
@@ -443,6 +554,19 @@
 					<Button Command="{Binding NextCommand}" Margin="5">
 						<materialDesign:PackIcon Kind="SkipNext" Width="24" Height="24" Foreground="White" />
 					</Button>
+					<Button x:Name="ShuffleButton"
+        Width="60"
+        Height="40"
+        Background="Transparent"
+        BorderBrush="{x:Null}"
+        Click="ShuffleButton_Click"
+        ToolTip="Перемешать треки">
+						<materialDesign:PackIcon x:Name="ShuffleIcon"
+                             Kind="Shuffle"
+                             Foreground="White"
+                             Width="28"
+                             Height="28"/>
+					</Button>
 					<TextBlock Margin="5" VerticalAlignment="Center" Foreground="White" FontSize="14">
 						<TextBlock.Text>
 							<MultiBinding Converter="{StaticResource SecondsToTimeConverter}">
@@ -453,7 +577,7 @@
 					</TextBlock>
 					<Slider x:Name="ProgressSlider" Value="{Binding PlayerService.PositionInSeconds, Mode=TwoWay}"
                             Minimum="0" Maximum="{Binding PlayerService.DurationInSeconds}"
-                            Width="300" Margin="5" VerticalAlignment="Center" MouseMove="ProgressSlider_MouseMove"/>
+                            Width="360" Margin="5" VerticalAlignment="Center" MouseMove="ProgressSlider_MouseMove"/>
 					<ToggleButton 
     x:Name="BottomFavoriteButton"
     Width="40"

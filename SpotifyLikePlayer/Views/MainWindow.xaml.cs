@@ -18,6 +18,7 @@ using System.Windows.Shapes;
 using System.Windows.Controls.Primitives;
 using System.Collections.ObjectModel;
 using System.Windows.Media.Animation;
+using System.Drawing;
 
 namespace SpotifyLikePlayer
 {
@@ -38,8 +39,188 @@ namespace SpotifyLikePlayer
             ToolTipService.SetInitialShowDelay(ProgressSlider, 0);
 
             SuggestionsList.PreviewMouseWheel += SuggestionsList_PreviewMouseWheel;
-
             SuggestionsList.PreviewMouseLeftButtonUp += SuggestionsList_PreviewMouseLeftButtonUp;
+
+            ViewModel.PlayerService.SongChanged += OnSongChanged;
+
+        }
+
+        private void HomeButton_Click(object sender, RoutedEventArgs e)
+        {
+            var allSongs = ViewModel._dbService.GetSongs() ?? new ObservableCollection<Song>();
+            ViewModel.Songs.Clear();
+            foreach (var s in allSongs)
+                ViewModel.Songs.Add(s);
+
+            // 2. Сбрасываем выбранный плейлист и альбом
+            ViewModel.SelectedPlaylist = null;
+
+            UpdateMusicContextText("Вся музыка");
+
+            ViewModel.OnPropertyChanged(nameof(ViewModel.Songs));
+        }
+
+        private void UpdateMusicContextText(string text)
+        {
+            string newText;
+
+            if (ViewModel.SelectedPlaylist != null)
+            {
+                newText = $"🎶 Плейлист: {ViewModel.SelectedPlaylist.Name}";
+            }
+            else if (ViewModel.SelectedSong?.Album != null)
+            {
+                newText = $"💿 Альбом: {ViewModel.SelectedSong.Album.Title}";
+            }
+            else
+            {
+                newText = $"🎵 Вся музыка";
+            }
+            var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(150));
+            fadeOut.Completed += (s, _) =>
+            {
+                MusicContextText.Text = newText;
+                var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(150));
+                MusicContextText.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+            };
+            MusicContextText.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+        }
+
+        private void ShuffleButton_Click(object sender, RoutedEventArgs e)
+        {
+            var player = ViewModel.PlayerService;
+            player.ToggleShuffle();
+
+            ShuffleIcon.Foreground = player.IsShuffleEnabled ? System.Windows.Media.Brushes.LightSkyBlue : System.Windows.Media.Brushes.White;
+        }
+
+        private void RepeatButton_Click(object sender, RoutedEventArgs e)
+        {
+            var player = ViewModel.PlayerService;
+            player.ToggleRepeatMode();
+
+            // Меняем иконку в зависимости от режима
+            switch (player.RepeatModeState)
+            {
+                case SpotifyLikePlayer.Services.MediaPlayerService.RepeatMode.None:
+                    RepeatIcon.Kind = MaterialDesignThemes.Wpf.PackIconKind.Repeat;
+                    RepeatIcon.Foreground = System.Windows.Media.Brushes.White;
+                    break;
+
+                case SpotifyLikePlayer.Services.MediaPlayerService.RepeatMode.All:
+                    RepeatIcon.Kind = MaterialDesignThemes.Wpf.PackIconKind.Repeat;
+                    RepeatIcon.Foreground = System.Windows.Media.Brushes.LightSkyBlue;
+                    break;
+
+                case SpotifyLikePlayer.Services.MediaPlayerService.RepeatMode.One:
+                    RepeatIcon.Kind = MaterialDesignThemes.Wpf.PackIconKind.RepeatOnce;
+                    RepeatIcon.Foreground = System.Windows.Media.Brushes.DeepSkyBlue;
+                    break;
+            }
+        }
+        private void SearchBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            HideSongInfo();
+        }
+
+        private void OnSongChanged(Song song)
+        {
+            HideSongInfo();
+        }
+
+        public void OnSongChangedExternally()
+        {
+            HideSongInfo();
+        }
+
+        private void ShowSongInfo()
+        {
+            if (ViewModel.SelectedSong == null)
+                return;
+
+            if (SongInfoPanel.Visibility != Visibility.Visible)
+            {
+                SongInfoPanel.Visibility = Visibility.Visible;
+
+                var animY = new DoubleAnimation
+                {
+                    From = -150,
+                    To = 0,
+                    Duration = TimeSpan.FromMilliseconds(300),
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                };
+
+                SongInfoPanel.RenderTransform = new TranslateTransform();
+                SongInfoPanel.RenderTransform.BeginAnimation(TranslateTransform.YProperty, animY);
+            }
+        }
+
+        private void SongsListView_ShowDetails_Click(object sender, RoutedEventArgs e)
+        {
+            if (SongsListView.SelectedItem is Song song)
+            {
+                ViewModel.SelectedSong = song;
+                ShowSongInfo();
+            }
+        }
+
+        private void HideSongInfo()
+        {
+            if (SongInfoPanel.Visibility != Visibility.Visible)
+                return;
+
+            var animY = new DoubleAnimation
+            {
+                From = 0,
+                To = -150,
+                Duration = TimeSpan.FromMilliseconds(250),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
+            };
+
+            animY.Completed += (s, _) =>
+            {
+                SongInfoPanel.Visibility = Visibility.Collapsed;
+            };
+
+            SongInfoPanel.RenderTransform = new TranslateTransform();
+            SongInfoPanel.RenderTransform.BeginAnimation(TranslateTransform.YProperty, animY);
+        }
+
+        private void CloseSongInfo_Click(object sender, RoutedEventArgs e)
+        {
+            HideSongInfo();
+        }
+
+        private void GoToAlbum_Click(object sender, RoutedEventArgs e)
+        {
+            var selected = ViewModel?.SelectedSong;
+            if (selected?.Album == null)
+                return;
+
+            int albumId = selected.Album.AlbumId;
+
+            var allSongs = ViewModel._dbService.GetSongs() ?? new ObservableCollection<Song>();
+
+            var albumSongs = allSongs
+                .Where(s => s.AlbumId == albumId)
+                .ToList();
+
+            UpdateSongsList(albumSongs);
+
+            if (ViewModel.Songs != null && ViewModel.Songs.Any())
+            {
+                var first = ViewModel.Songs.First();
+                SongsListView.SelectedItem = first;
+                SongsListView.ScrollIntoView(first);
+            }
+
+            HideSongInfo();
+            UpdateMusicContextText("");
+        }
+
+        public void OnTrackSwitched()
+        {
+            HideSongInfo();
         }
 
         private async void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -236,6 +417,7 @@ namespace SpotifyLikePlayer
                 }
                 ViewModel.OnPropertyChanged(nameof(ViewModel.Songs));
             });
+            UpdateMusicContextText("");
         }
 
         private void PerformSearch(string query)
@@ -266,22 +448,21 @@ namespace SpotifyLikePlayer
 
         private void ChangeGenreButton_Click(object sender, RoutedEventArgs e)
         {
-            // Создаем простое контекстное меню
             var menu = new ContextMenu();
 
-            var genres = new List<string> { "Hip-Hop", "Rock", "Metal", "Pop" };
+            var genres = new List<string> { "Hip-Hop", "Rock", "Metal", "Pop", "Alt Metal" };
 
             foreach (var genre in genres)
             {
                 var item = new MenuItem
                 {
                     Header = genre,
-                    Foreground = Brushes.Lime,
+                    Foreground = System.Windows.Media.Brushes.Lime,
                     FontSize = 14,
                     Icon = new MaterialDesignThemes.Wpf.PackIcon
                     {
                         Kind = MaterialDesignThemes.Wpf.PackIconKind.MusicNote,
-                        Foreground = Brushes.Lime,
+                        Foreground = System.Windows.Media.Brushes.Lime,
                         Width = 18,
                         Height = 18
                     }
@@ -313,6 +494,7 @@ namespace SpotifyLikePlayer
                 var vm = DataContext as MainViewModel;
                 vm?.LoadPlaylistSongs(selectedPlaylist);
             }
+            UpdateMusicContextText("");
         }
         public async void ShowNotification(string message, bool isFavoriteLocal)
         {
@@ -435,13 +617,15 @@ namespace SpotifyLikePlayer
             var viewModel = (MainViewModel)DataContext;
             if (viewModel.SelectedPlaylist != null)
             {
-                viewModel.LoadPlaylistSongs(viewModel.SelectedPlaylist); // Вызываем метод для загрузки песен
+                viewModel.LoadPlaylistSongs(viewModel.SelectedPlaylist);
             }
             else
             {
-                viewModel.Songs = viewModel._dbService.GetSongs() ?? new ObservableCollection<Song>(); // Возвращаемся к полному списку
+                viewModel.Songs = viewModel._dbService.GetSongs() ?? new ObservableCollection<Song>();
                 viewModel.OnPropertyChanged(nameof(viewModel.Songs));
             }
+
+            UpdateMusicContextText("");
         }
 
         private void ProgressSlider_MouseMove(object sender, MouseEventArgs e)

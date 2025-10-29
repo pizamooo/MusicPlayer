@@ -23,6 +23,32 @@ namespace SpotifyLikePlayer.Services
         private double _positionInSeconds;
         private double _volume = 0.5;
 
+        private readonly Random _random = new Random();
+
+        public event Action<Song> SongChanged;
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        public enum RepeatMode
+        {
+            None,   // обычный режим
+            All,    // повтор плейлиста
+            One     // повтор текущего трека
+        }
+        private RepeatMode _repeatMode = RepeatMode.None;
+        private bool _isShuffleEnabled;
+        public bool IsShuffleEnabled
+        {
+            get => _isShuffleEnabled;
+            set
+            {
+                if (_isShuffleEnabled != value)
+                {
+                    _isShuffleEnabled = value;
+                    OnPropertyChanged(nameof(IsShuffleEnabled));
+                }
+            }
+        }
+
         private Song _currentSong;
         public Song CurrentSong
         {
@@ -37,12 +63,108 @@ namespace SpotifyLikePlayer.Services
             }
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
-
         public MediaPlayerService()
         {
-            _mediaPlayer.MediaEnded += (s, e) => PlayNext();
+            _mediaPlayer.MediaEnded += OnMediaEnded;
             CompositionTarget.Rendering += OnRendering;
+        }
+
+        private void OnMediaEnded(object sender, EventArgs e)
+        {
+            if (_playlist == null || _playlist.Count == 0)
+                return;
+
+            switch (_repeatMode)
+            {
+                case RepeatMode.One:
+                    _mediaPlayer.Position = TimeSpan.Zero;
+                    _mediaPlayer.Play();
+                    break;
+
+                case RepeatMode.All:
+                    PlayNextWithShuffleCheck();
+                    break;
+
+                case RepeatMode.None:
+                default:
+                    if (_isShuffleEnabled)
+                    {
+                        PlayNextWithShuffleCheck();
+                    }
+                    else if (_currentIndex < _playlist.Count - 1)
+                    {
+                        _currentIndex++;
+                        Play(_playlist[_currentIndex], _playlist, _currentIndex);
+                    }
+                    else
+                    {
+                        _isPlaying = false;
+                    }
+                    break;
+            }
+        }
+
+        private void PlayNextWithShuffleCheck()
+        {
+            if (_playlist == null || _playlist.Count == 0)
+                return;
+
+            if (_isShuffleEnabled)
+            {
+                var random = new Random();
+                int nextIndex;
+
+                if (_playlist.Count == 1)
+                {
+                    nextIndex = _currentIndex;
+                }
+                else
+                {
+                    do
+                    {
+                        nextIndex = random.Next(0, _playlist.Count);
+                    } while (nextIndex == _currentIndex);
+                }
+
+                _currentIndex = nextIndex;
+                Play(_playlist[_currentIndex], _playlist, _currentIndex);
+            }
+            else
+            {
+                if (_currentIndex < _playlist.Count - 1)
+                {
+                    _currentIndex++;
+                }
+                else if (_repeatMode == RepeatMode.All)
+                {
+                    _currentIndex = 0;
+                }
+                else
+                {
+                    _isPlaying = false;
+                    return;
+                }
+
+                Play(_playlist[_currentIndex], _playlist, _currentIndex);
+            }
+        }
+
+        private void HandleSongEnded()
+        {
+            if (_repeatMode == RepeatMode.One)
+            {
+                Play(CurrentSong, _playlist, _currentIndex);
+            }
+            else
+            {
+                PlayNext();
+            }
+        }
+
+
+        private void OnSongChanged(Song song)
+        {
+            SongChanged?.Invoke(song);
         }
 
         private void OnRendering(object sender, EventArgs e)
@@ -51,7 +173,7 @@ namespace SpotifyLikePlayer.Services
             {
                 _positionInSeconds = _mediaPlayer.Position.TotalSeconds;
                 OnPropertyChanged(nameof(PositionInSeconds));
-                OnPropertyChanged(nameof(DurationInSeconds)); // Обновляем на случай изменений
+                OnPropertyChanged(nameof(DurationInSeconds));
             }
         }
 
@@ -66,9 +188,12 @@ namespace SpotifyLikePlayer.Services
             _isPaused = false;
             _positionInSeconds = 0;
             CurrentSong = song;
+
             OnPropertyChanged(nameof(CurrentSong));
             OnPropertyChanged(nameof(IsPlaying));
             OnPropertyChanged(nameof(IsPaused));
+
+            OnSongChanged(song);
         }
 
         public void Pause()
@@ -99,24 +224,89 @@ namespace SpotifyLikePlayer.Services
 
         public void PlayNext()
         {
-            if (_playlist != null && _currentIndex < _playlist.Count - 1)
+            if (_playlist == null || _playlist.Count == 0) return;
+
+            if (_isShuffleEnabled)
+            {
+                int nextIndex = _random.Next(0, _playlist.Count);
+                Play(_playlist[nextIndex], _playlist, nextIndex);
+            }
+            else
             {
                 _currentIndex++;
+                if (_currentIndex >= _playlist.Count)
+                {
+                    if (_repeatMode == RepeatMode.All)
+                        _currentIndex = 0;
+                    else
+                        return; // конец плейлиста
+                }
                 Play(_playlist[_currentIndex], _playlist, _currentIndex);
             }
         }
 
         public void PlayPrevious()
         {
-            if (_playlist != null && _currentIndex > 0)
+            if (_playlist == null || _playlist.Count == 0) return;
+
+            if (_isShuffleEnabled)
+            {
+                int prevIndex = _random.Next(0, _playlist.Count);
+                Play(_playlist[prevIndex], _playlist, prevIndex);
+            }
+            else
             {
                 _currentIndex--;
+                if (_currentIndex < 0)
+                {
+                    if (_repeatMode == RepeatMode.All)
+                        _currentIndex = _playlist.Count - 1;
+                    else
+                        return; // начало плейлиста
+                }
                 Play(_playlist[_currentIndex], _playlist, _currentIndex);
             }
         }
 
+        public void ToggleShuffle()
+        {
+            _isShuffleEnabled = !_isShuffleEnabled;
+            OnPropertyChanged(nameof(IsShuffleEnabled));
+        }
+
+        public void ToggleRepeatMode()
+        {
+            switch (_repeatMode)
+            {
+                case RepeatMode.None:
+                    _repeatMode = RepeatMode.All;
+                    break;
+                case RepeatMode.All:
+                    _repeatMode = RepeatMode.One;
+                    break;
+                case RepeatMode.One:
+                default:
+                    _repeatMode = RepeatMode.None;
+                    break;
+            }
+
+            OnPropertyChanged(nameof(RepeatModeState));
+        }
+
         public bool IsPlaying => _isPlaying;
         public bool IsPaused => _isPaused;
+        public RepeatMode RepeatModeState
+        {
+            get => _repeatMode;
+            set
+            {
+                if (_repeatMode != value)
+                {
+                    _repeatMode = value;
+                    OnPropertyChanged(nameof(RepeatModeState));
+                }
+            }
+        }
         public double PositionInSeconds
         {
             get => _positionInSeconds;

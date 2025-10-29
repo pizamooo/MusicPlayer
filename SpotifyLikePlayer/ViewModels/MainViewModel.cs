@@ -25,6 +25,7 @@ namespace SpotifyLikePlayer.ViewModels
         private const string DefaultMusicPath = @"C:\Users\dobry\OneDrive\Documents\MusicForProject";  // путь песен
 
         private Song _currentSong;
+
         public Song CurrentSong
         {
             get => _currentSong;
@@ -51,8 +52,8 @@ namespace SpotifyLikePlayer.ViewModels
             }
         }
         public ObservableCollection<Playlist> Playlists { get; set; } = new ObservableCollection<Playlist>();
-        public Song SelectedSong { get; set; 
-        }
+        public Song SelectedSong { get; set; }
+
         private Playlist _selectedPlaylist;
         public Playlist SelectedPlaylist
         {
@@ -236,6 +237,7 @@ namespace SpotifyLikePlayer.ViewModels
             if (!(parameter is Tuple<Playlist, Song> tuple)) return;
             var playlist = tuple.Item1;
             var song = tuple.Item2;
+
             var existing = _dbService.GetPlaylistSongs(playlist.PlaylistId)?.Any(s => s.SongId == song.SongId) ?? false;
             if (existing)
             {
@@ -255,6 +257,12 @@ namespace SpotifyLikePlayer.ViewModels
             if (CurrentUser == null)
             {
                 Notify("Нужно войти в аккаунт, чтобы создать плейлист.", false);
+                return;
+            }
+
+            if (Playlists != null && Playlists.Count >= 13)
+            {
+                Notify("Нельзя добавить песню — достигнут лимит плейлистов!", false);
                 return;
             }
 
