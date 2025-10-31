@@ -28,11 +28,13 @@ namespace SpotifyLikePlayer
     public partial class MainWindow : Window
     {
         private List<Song> _lastSearchResults = new List<Song>();
+        private MainViewModel _vm;
 
         public MainViewModel ViewModel { get; set; }
         public MainWindow(MainViewModel vm)
         {
             ViewModel = vm;
+            _vm = vm;
             DataContext = ViewModel;
             InitializeComponent();
             ProgressSlider.MouseMove += ProgressSlider_MouseMove;
@@ -43,6 +45,61 @@ namespace SpotifyLikePlayer
 
             ViewModel.PlayerService.SongChanged += OnSongChanged;
 
+        }
+
+        private void SongsListView_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (SongsListView.View is GridView gridView)
+            {
+                double totalWidth = SongsListView.ActualWidth - 100 - 90 - 60 - 50;
+
+                if (totalWidth <= 0) return;
+
+                double eachWidth = totalWidth / 4;
+                gridView.Columns[1].Width = eachWidth; 
+                gridView.Columns[2].Width = eachWidth; 
+                gridView.Columns[3].Width = eachWidth; 
+                gridView.Columns[4].Width = eachWidth; 
+            }
+        }
+
+        private void ProfileButton_Click(object sender, RoutedEventArgs e)
+        {
+            var currentUser = _vm.CurrentUser;
+
+            if (currentUser == null)
+            {
+                ShowNotification("Ошибка: пользователь не найден", false);
+                return;
+            }
+
+            var profileWindow = new Views.ProfileWindow(currentUser)
+            {
+                Owner = this
+            };
+
+            if (profileWindow.ShowDialog() == true)
+            {
+                ShowNotification("Профиль успешно обновлён", true);
+            }
+        }
+
+        private void HelpButton_Click(object sender, RoutedEventArgs e)
+        {
+            string info =
+                "🎧 PATHTRACK — музыкальный плеер.\n\n" +
+                "Возможности:\n" +
+                "• Воспроизведение музыки с повтором и перемешиванием\n" +
+                "• Создание и удаление плейлистов\n" +
+                "• Добавление песен в избранное\n" +
+                "• Скачивание песен\n" +
+                "• Быстрый поиск по названию, артисту и альбому\n" +
+                "• Просмотр информации о треке и альбоме\n" +
+                "• Автоматическое сохранение состояния\n\n" +
+                "Разработчик: pizamooo\n" +
+                "Версия: 1.0";
+
+            MessageBox.Show(info, "О программе", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void HomeButton_Click(object sender, RoutedEventArgs e)
@@ -66,15 +123,15 @@ namespace SpotifyLikePlayer
 
             if (ViewModel.SelectedPlaylist != null)
             {
-                newText = $"🎶 Плейлист: {ViewModel.SelectedPlaylist.Name}";
+                newText = $"Плейлист: {ViewModel.SelectedPlaylist.Name}";
             }
             else if (ViewModel.SelectedSong?.Album != null)
             {
-                newText = $"💿 Альбом: {ViewModel.SelectedSong.Album.Title}";
+                newText = $"Альбом: {ViewModel.SelectedSong.Album.Title}";
             }
             else
             {
-                newText = $"🎵 Вся музыка";
+                newText = $"Вся музыка";
             }
             var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(150));
             fadeOut.Completed += (s, _) =>

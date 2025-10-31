@@ -10,7 +10,7 @@
 		xmlns:componentModel="clr-namespace:System.ComponentModel;assembly=WindowsBase"
 		xmlns:models="clr-namespace:SpotifyLikePlayer.Models"
 		mc:Ignorable="d"
-        Title="PATHTRACK" Height="600" Width="860"
+        Title="PATHTRACK" Height="600" Width="860" SizeToContent="Manual" ResizeMode="CanResize" MinWidth="900" MinHeight="600"
         DataContext="{Binding RelativeSource={RelativeSource Self}, Path=ViewModel}"
         WindowStartupLocation="CenterScreen" WindowState="Maximized" Topmost="False">
 	<Window.Resources>
@@ -124,14 +124,18 @@
 			<RowDefinition Height="80" />
 		</Grid.RowDefinitions>
 
-		<!-- Информация о текущей песне и поиск (выше) -->
 		<Grid Grid.Row="0" Grid.ColumnSpan="2" Background="#1E1E1E">
 			<Grid.RowDefinitions>
 				<RowDefinition Height="Auto" />
 				<RowDefinition Height="Auto" />
 			</Grid.RowDefinitions>
 			<TextBlock Grid.Row="0" Text="Сейчас играет" Foreground="White" FontWeight="Bold" 
-                       FontSize="14" Margin="10,5" HorizontalAlignment="Left" />
+                       FontSize="18" Margin="10,5" HorizontalAlignment="Left" />
+			<TextBlock Grid.Row="0" Text="Справка" Foreground="White" FontWeight="Bold" 
+           FontSize="18" Margin="10,7,50,0" HorizontalAlignment="Right" Cursor="" />
+			<Button x:Name="HelpButton" Grid.Row="0" Width="60" Height="35" Margin="2" HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" BorderBrush="{x:Null}" Click="HelpButton_Click" ToolTip="О программе">
+				<materialDesign:PackIcon Kind="InformationOutline" Width="26" Height="26" Foreground="LightSkyBlue"/>
+			</Button>
 			<Grid Grid.Row="1">
 				<Grid.ColumnDefinitions>
 					<ColumnDefinition Width="Auto" />
@@ -140,43 +144,56 @@
 				</Grid.ColumnDefinitions>
 				<StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,5,0,5" VerticalAlignment="Center">
 					<Image Source="{Binding PlayerService.CurrentSong.CoverImage, FallbackValue={x:Null}}" 
-                           Width="80" Height="80" Stretch="UniformToFill" Margin="0,0,10,0"/>
+                           Width="100" Height="100" Stretch="UniformToFill" Margin="0,0,10,0"/>
 					<StackPanel Orientation="Vertical">
 						<TextBlock Text="{Binding PlayerService.CurrentSong.Title, TargetNullValue='Unknown Title'}" 
-                                   Foreground="White" FontWeight="Bold" FontSize="16"/>
+                                   Foreground="White" FontWeight="Bold" FontSize="28"/>
 						<TextBlock Text="{Binding PlayerService.CurrentSong.Artist.Name, TargetNullValue='Unknown Artist'}" 
-                                   Foreground="LimeGreen" FontSize="14" FontWeight="SemiBold" Cursor=""/>
+                                   Foreground="LimeGreen" FontSize="19" FontWeight="SemiBold" Cursor=""/>
 						<TextBlock Text="{Binding PlayerService.CurrentSong.Album.Title, TargetNullValue='Unknown Album'}" 
-                                   Foreground="LimeGreen" FontSize="12"/>
+                                   Foreground="LimeGreen" FontSize="17"/>
 					</StackPanel>
 				</StackPanel>
-				<!-- Текст состояния -->
-				<TextBlock Grid.ColumnSpan="3" x:Name="MusicContextText"
-               Text="Вся музыка"
-               FontSize="22"
-               FontWeight="SemiBold"
-               Foreground="White"
-               VerticalAlignment="Center"
-						   Margin="1070,10,0,0"
-               Opacity="0.85"/>
+				<Grid Grid.Column="1" VerticalAlignment="Center">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="*" />
+					</Grid.ColumnDefinitions>
 
-				<TextBox Grid.Column="1" x:Name="SearchBox"
-             Width="400"
-             Height="38"
-             FontSize="18"
-						 Padding="10,2,10,2"
-						 Background="#222"
-						 BorderBrush="#444"
-						 BorderThickness="1"
-             Foreground="White"
-             VerticalAlignment="Center"
-             HorizontalAlignment="Center"
-             materialDesign:HintAssist.Hint="Поиск трека, исполнителя или альбома..."
-             TextChanged="SearchBox_TextChanged"
-             KeyDown="SearchBox_KeyDown"
-			 GotFocus="SearchBox_GotFocus"/>
+					<DockPanel HorizontalAlignment="Center" VerticalAlignment="Center" LastChildFill="False">
+						<TextBox x:Name="SearchBox"
+                 Width="400"
+                 Height="46"
+                 FontSize="18"
+                 Padding="10,2,10,2"
+                 Background="#222"
+                 BorderBrush="#444"
+                 BorderThickness="1"
+                 Foreground="White"
+                 VerticalAlignment="Center"
+                 materialDesign:HintAssist.Hint="Поиск трека, исполнителя или альбома..."
+                 TextChanged="SearchBox_TextChanged"
+                 KeyDown="SearchBox_KeyDown"
+                 GotFocus="SearchBox_GotFocus"/>
 
-				<!-- Красивый Popup для подсказок -->
+						<StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
+							<materialDesign:PackIcon Kind="Album"
+                                     Width="29" Height="29"
+                                     Foreground="#CCCCCC"
+                                     VerticalAlignment="Center"
+                                     Opacity="0.8"/>
+							<TextBlock x:Name="MusicContextText"
+                       Text="Вся музыка"
+                       FontSize="30"
+                       FontWeight="SemiBold"
+                       Foreground="#DDDDDD"
+                       VerticalAlignment="Center"
+                       Margin="6,0,0,0"
+                       Opacity="0.9"
+                       TextTrimming="CharacterEllipsis"/>
+						</StackPanel>
+					</DockPanel>
+				</Grid>
+
 				<Popup x:Name="SuggestionsPopup"
            PlacementTarget="{Binding ElementName=SearchBox}"
            Placement="Bottom"
@@ -199,7 +216,6 @@
                          FontSize="16"
                          MouseLeftButtonUp="SuggestionsList_MouseLeftButtonUp" PreviewMouseWheel="SuggestionsList_PreviewMouseWheel">
 
-								<!-- Визуальный шаблон одной подсказки -->
 								<ListBox.ItemTemplate>
 									<DataTemplate>
 										<Grid Margin="6">
@@ -208,14 +224,12 @@
 												<ColumnDefinition Width="*"/>
 											</Grid.ColumnDefinitions>
 
-											<!-- Иконка -->
 											<materialDesign:PackIcon Kind="MusicNote"
                                                          Width="24" Height="24"
                                                          Foreground="LightSkyBlue"
                                                          VerticalAlignment="Center"
                                                          Margin="0,0,10,0"/>
 
-											<!-- Текст -->
 											<StackPanel Grid.Column="1" VerticalAlignment="Center">
 												<TextBlock Text="{Binding Title}"
                                                FontWeight="Bold"
@@ -229,7 +243,6 @@
 									</DataTemplate>
 								</ListBox.ItemTemplate>
 
-								<!-- Стиль строк -->
 								<ListBox.ItemContainerStyle>
 									<Style TargetType="ListBoxItem">
 										<Setter Property="Padding" Value="4"/>
@@ -260,22 +273,40 @@
 						</ScrollViewer>
 					</Border>
 				</Popup>
-				<Button Grid.Column="2" x:Name="ChangeGenreButton"
-        Style="{StaticResource GenreButtonStyle}"
-        Click="ChangeGenreButton_Click" Margin="0,0,15,0">
-					<Button.Content>
-						<StackPanel Orientation="Horizontal">
-							<materialDesign:PackIcon Kind="Music" Width="20" Height="20" Margin="0,0,6,0" Foreground="Lime"/>
-							<TextBlock Text="Изменить жанр для вас"/>
+				<StackPanel Grid.Column="2" Orientation="Vertical"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Margin="0,5,10,0">
+					<Button x:Name="ProfileButton"
+            Margin="100,0,0,10"
+            Width="180"
+            Height="40"
+            Background="#222"
+            Foreground="White"
+            BorderBrush="#444"
+            BorderThickness="1"
+            Click="ProfileButton_Click">
+						<StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+							<materialDesign:PackIcon Kind="AccountCircle" Width="26" Height="26" Foreground="Lime"/>
+							<TextBlock Text="Профиль" Margin="6,0,0,0" FontSize="20" VerticalAlignment="Center" FontWeight="Bold"/>
 						</StackPanel>
-					</Button.Content>
-				</Button>
+					</Button>
+					<Button Grid.Column="2" x:Name="ChangeGenreButton" Margin="0,0,0,20"
+        Style="{StaticResource GenreButtonStyle}"
+        Click="ChangeGenreButton_Click">
+						<Button.Content>
+							<StackPanel Orientation="Horizontal" Cursor="">
+								<materialDesign:PackIcon Kind="Music" Width="26" Height="26" Margin="0,0,6,0" Foreground="Lime"/>
+								<TextBlock Text="Изменить жанр для вас" FontSize="20" FontWeight="Bold"/>
+							</StackPanel>
+						</Button.Content>
+					</Button>
+				</StackPanel>
 			</Grid>
 		</Grid>
 
-		<!-- Sidebar: Navigation -->
 		<StackPanel Grid.Column="0" Grid.Row="1" Background="#121212">
-			<Button Content="Home" Click="HomeButton_Click" Margin="5,5,5,5" Command="{Binding HomeCommand}"/>
+			<Button Content="Home" FontSize="20" Click="HomeButton_Click" Height="34" Margin="5,5,5,5" Command="{Binding HomeCommand}"/>
 			<TextBlock Text="Плейлисты" Foreground="White" FontSize="20"
                FontWeight="Bold" Margin="10,10,0,10"/>
 			<ListBox x:Name="PlaylistsListBox"
@@ -296,7 +327,6 @@
 								<Style TargetType="TextBlock">
 									<Setter Property="Foreground" Value="White"/>
 									<Style.Triggers>
-										<!-- Favorite — выделить цветом Lime -->
 										<DataTrigger Binding="{Binding Name}" Value="Favorite">
 											<Setter Property="Foreground" Value="Lime"/>
 										</DataTrigger>
@@ -308,7 +338,6 @@
 				</ListBox.ItemTemplate>
 
 				<ListBox.ContextMenu>
-					<!-- Привязываем контекст меню к окну -->
 					<ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
 						<MenuItem Header="Удалить плейлист"
                       Command="{Binding DeletePlaylistCommand}"
@@ -319,18 +348,17 @@
 		</StackPanel>
 		
 
-		<!-- Main Content: Song List -->
 		<Grid Grid.Column="1" Grid.Row="1">
 
 			<Border x:Name="SongInfoPanel"
         Background="#1E1E1E"
-        Height="180"
+        Height="200"
         Padding="20"
         Margin="0,10,0,0"
         Visibility="Collapsed"
         HorizontalAlignment="Center"
         VerticalAlignment="Top"
-        Width="800"
+        Width="600"
         CornerRadius="10"
         Panel.ZIndex="10">
 				<Border.RenderTransform>
@@ -338,12 +366,11 @@
 				</Border.RenderTransform>
 
 				<Grid>
-					<Grid.ColumnDefinitions>
-						<ColumnDefinition Width="160"/>
-						<ColumnDefinition Width="*"/>
-					</Grid.ColumnDefinitions>
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto"/>
+						<RowDefinition Height="*"/>
+					</Grid.RowDefinitions>
 
-					<!-- Обложка -->
 					<Border CornerRadius="6" Margin="0,0,20,0">
 						<Image Source="{Binding SelectedSong.CoverImage}"
                    Width="160" Height="160"
@@ -352,7 +379,6 @@
                    VerticalAlignment="Center"/>
 					</Border>
 
-					<!-- Информация о песне -->
 					<StackPanel Grid.Column="1"
                     Orientation="Vertical"
                     VerticalAlignment="Center"
@@ -361,20 +387,20 @@
                        FontSize="22"
                        FontWeight="Bold"
                        Foreground="White"
-                       Margin="0,0,0,0"/>
+                       Margin="160,0,0,0"/>
 
 						<TextBlock Text="{Binding SelectedSong.Artist.Name}"
                        FontSize="16"
-                       Foreground="#CCCCCC"/>
+                       Foreground="#CCCCCC" Margin="160,0,0,0"/>
 
 						<TextBlock Text="{Binding SelectedSong.Album.Title}"
                        FontSize="14"
                        Foreground="#AAAAAA"
-                       Margin="0,4,0,0"/>
+                       Margin="160,0,0,0"/>
 
 						<StackPanel Orientation="Horizontal" Margin="0,8,0,0">
 							<TextBlock Text="{Binding SelectedSong.Album.ReleaseYear, StringFormat='Год: {0}'}"
-                           Foreground="#AAAAAA" Margin="0,0,16,0"/>
+                           Foreground="#AAAAAA" Margin="160,0,16,0"/>
 							<TextBlock Text="{Binding SelectedSong.Genre, StringFormat='Жанр: {0}'}"
                            Foreground="#AAAAAA" Margin="0,0,16,0"/>
 						</StackPanel>
@@ -387,7 +413,7 @@
                         BorderBrush="LimeGreen"
                         BorderThickness="1"
                         Padding="10,4"
-                        Margin="0,0,10,10"
+                        Margin="160,0,10,15"
                         Cursor="Hand"/>
 							<Button Content="Закрыть"
                         Click="CloseSongInfo_Click"
@@ -396,7 +422,7 @@
                         BorderBrush="#666"
                         BorderThickness="1"
                         Padding="10,4"
-						Margin="0,0,10,10"
+						Margin="0,0,10,15"
                         Cursor="Hand"/>
 						</StackPanel>
 					</StackPanel>
@@ -410,8 +436,11 @@
               Background="#121212"
               Foreground="White"
               HorizontalAlignment="Stretch"
-              MinWidth="600"
+			  VerticalAlignment="Stretch"
+    Grid.Row="1"
+    Grid.Column="0"
               FontSize="20"
+			  SizeChanged="SongsListView_SizeChanged"
               MouseDoubleClick="SongsListView_MouseDoubleClick">
 
 				<ListView.ItemContainerStyle>
@@ -430,45 +459,97 @@
 				</ListView.ItemContainerStyle>
 
 				<ListView.View>
-					<GridView>
-						<GridViewColumn Width="120">
+					<GridView x:Name="SongsGridView">
+						<!-- Обложка -->
+						<GridViewColumn Width="100">
 							<GridViewColumn.CellTemplate>
 								<DataTemplate>
-									<Image Source="{Binding CoverImage}" Width="80" Height="80" Stretch="UniformToFill" />
+									<Image Source="{Binding CoverImage}"
+                           Width="80" Height="80"
+                           Stretch="UniformToFill"
+                           Margin="5"/>
 								</DataTemplate>
 							</GridViewColumn.CellTemplate>
 						</GridViewColumn>
 
-						<GridViewColumn Header="Название" DisplayMemberBinding="{Binding Title}" Width="400" />
-						<GridViewColumn Header="Артист" DisplayMemberBinding="{Binding Artist.Name}" Width="300" />
-						<GridViewColumn Header="Альбом" DisplayMemberBinding="{Binding Album.Title}" Width="300" />
-						<GridViewColumn Header="Жанр" DisplayMemberBinding="{Binding Genre}" Width="250" />
-						<GridViewColumn Width="150">
+						<!-- Название -->
+						<GridViewColumn Header="Название">
+							<GridViewColumn.CellTemplate>
+								<DataTemplate>
+									<TextBlock Text="{Binding Title}"
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding Title}"
+                               VerticalAlignment="Center"
+                               Margin="8,0,0,0"/>
+								</DataTemplate>
+							</GridViewColumn.CellTemplate>
+						</GridViewColumn>
+
+						<!-- Артист -->
+						<GridViewColumn Header="Артист">
+							<GridViewColumn.CellTemplate>
+								<DataTemplate>
+									<TextBlock Text="{Binding Artist.Name}"
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding Artist.Name}"
+                               VerticalAlignment="Center"
+                               Margin="8,0,0,0"/>
+								</DataTemplate>
+							</GridViewColumn.CellTemplate>
+						</GridViewColumn>
+
+						<!-- Альбом -->
+						<GridViewColumn Header="Альбом">
+							<GridViewColumn.CellTemplate>
+								<DataTemplate>
+									<TextBlock Text="{Binding Album.Title}"
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding Album.Title}"
+                               VerticalAlignment="Center"
+                               Margin="8,0,0,0"/>
+								</DataTemplate>
+							</GridViewColumn.CellTemplate>
+						</GridViewColumn>
+
+						<!-- Жанр -->
+						<GridViewColumn Header="Жанр">
+							<GridViewColumn.CellTemplate>
+								<DataTemplate>
+									<TextBlock Text="{Binding Genre}"
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding Genre}"
+                               VerticalAlignment="Center"
+                               Margin="8,0,0,0"/>
+								</DataTemplate>
+							</GridViewColumn.CellTemplate>
+						</GridViewColumn>
+
+						<!-- Длительность -->
+						<GridViewColumn>
 							<GridViewColumn.Header>
 								<StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
 									<materialDesign:PackIcon Kind="ClockOutline" Width="18" Height="18" Foreground="White" />
 								</StackPanel>
 							</GridViewColumn.Header>
-
 							<GridViewColumn.DisplayMemberBinding>
 								<Binding Path="Duration" StringFormat="{}{0:mm\:ss}" />
 							</GridViewColumn.DisplayMemberBinding>
 						</GridViewColumn>
 
-						<GridViewColumn Width="150">
+						<!-- Избранное -->
+						<GridViewColumn Width="100">
 							<GridViewColumn.CellTemplate>
 								<DataTemplate>
 									<Button Style="{StaticResource FavoriteStarButton}"
-                                    Click="FavoriteButton_Click"
-                                    ToolTip="Add to Favorite"
-                                    DataContext="{Binding}" />
+                            Click="FavoriteButton_Click"
+                            ToolTip="Добавить в избранное"
+                            DataContext="{Binding}" />
 								</DataTemplate>
 							</GridViewColumn.CellTemplate>
 						</GridViewColumn>
 					</GridView>
 				</ListView.View>
 
-				<!-- Контекстное меню песен -->
 				<ListView.ContextMenu>
 					<ContextMenu Opened="SongsContextMenu_Opened"
                  Background="#2a2a2a"
@@ -501,19 +582,14 @@
 			</ListView>
 		</Grid>
 
-		<!-- Player Controls -->
 		<materialDesign:Card Grid.Row="2" Grid.ColumnSpan="2" Background="#181818">
 			<Grid>
 				<Grid.ColumnDefinitions>
 					<ColumnDefinition Width="Auto" />
-					<!-- Song info -->
 					<ColumnDefinition Width="*" />
-					<!-- Controls and progress slider -->
 					<ColumnDefinition Width="Auto" />
-					<!-- Volume slider -->
 				</Grid.ColumnDefinitions>
 
-				<!-- Buttons and Progress Slider -->
 				<StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Cursor="">
 					<Button x:Name="RepeatModeButton"
         Width="60"
@@ -593,8 +669,7 @@
     Command="{Binding ToggleFavoriteCommand}"
     CommandParameter="{Binding PlayerService.CurrentSong}" />
 				</StackPanel>
-
-				<!-- Volume Slider (короткий, справа) -->
+				
 				<StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="10">
 					<TextBlock Text="{Binding PlayerService.Volume, StringFormat={}{0:P0}, UpdateSourceTrigger=PropertyChanged}" 
                        Foreground="White" VerticalAlignment="Center" Margin="5,0" MinWidth="30"/>
@@ -617,7 +692,6 @@
         Panel.ZIndex="9999"
         IsHitTestVisible="False"
         MaxWidth="800">
-			<!-- ограничим ширину -->
 			<TextBlock x:Name="NotificationText"
                Foreground="Lime"
                FontSize="16"
