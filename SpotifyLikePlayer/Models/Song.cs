@@ -56,6 +56,20 @@ namespace SpotifyLikePlayer.Models
             }
         }
 
+        private bool _isPlaying;
+        public bool IsPlaying
+        {
+            get => _isPlaying;
+            set
+            {
+                if (_isPlaying != value)
+                {
+                    _isPlaying = value;
+                    OnPropertyChanged(nameof(IsPlaying));
+                }
+            }
+        }
+
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {

@@ -11,8 +11,8 @@
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
-        Width="450"
-		Height="620">
+        Width="500"
+		Height="640">
 	<Border x:Name="MainContainer"
             CornerRadius="12"
             Background="#2b2b2b"
@@ -77,33 +77,77 @@
 			</StackPanel>
 
 
-			<TextBox x:Name="UsernameBox"
-                     Height="35" Margin="0,0,0,10"
-                     FontSize="14"
-                     Background="#333" Foreground="White"
-                     BorderBrush="#555" BorderThickness="1"
-                     materialDesign:HintAssist.Hint="Имя пользователя"/>
+			<StackPanel Margin="0,25,0,0" HorizontalAlignment="Stretch">
 
-			<TextBox x:Name="EmailBox"
-                     Height="35" Margin="0,0,0,10"
-                     FontSize="14"
-                     Background="#333" Foreground="White"
-                     BorderBrush="#555" BorderThickness="1"
-                     materialDesign:HintAssist.Hint="Email"/>
+				<!-- Имя пользователя -->
+				<StackPanel Orientation="Horizontal" Margin="0,0,0,12" VerticalAlignment="Center">
+					<TextBlock Text="Логин:"
+                               Width="115"
+                               Foreground="#ccc"
+                               VerticalAlignment="Center"
+                               FontSize="14"/>
+					<TextBox x:Name="UsernameBox"
+                             Height="35"
+                             Width="202"
+                             FontSize="14"
+                             Background="#333"
+                             Foreground="White"
+                             BorderBrush="#555"
+                             BorderThickness="1"
+                             materialDesign:HintAssist.Hint="Имя пользователя"/>
+				</StackPanel>
 
-			<PasswordBox x:Name="PasswordBox"
-                         Height="35" Margin="0,0,0,10"
-                         FontSize="14"
-                         Background="#333" Foreground="White"
-                         BorderBrush="#555" BorderThickness="1"
-                         materialDesign:HintAssist.Hint="Новый пароль"/>
+				<!-- Email -->
+				<StackPanel Orientation="Horizontal" Margin="0,0,0,12" VerticalAlignment="Center">
+					<TextBlock Text="Email:"
+                               Width="115"
+                               Foreground="#ccc"
+                               VerticalAlignment="Center"
+                               FontSize="14"/>
+					<TextBox x:Name="EmailBox"
+                             Height="35"
+                             Width="202"
+                             FontSize="14"
+                             Background="#333"
+                             Foreground="White"
+                             BorderBrush="#555"
+                             BorderThickness="1"/>
+				</StackPanel>
 
-			<PasswordBox x:Name="ConfirmPasswordBox"
-                         Height="35" Margin="0,0,0,20"
-                         FontSize="14"
-                         Background="#333" Foreground="White"
-                         BorderBrush="#555" BorderThickness="1"
-                         materialDesign:HintAssist.Hint="Подтвердите пароль"/>
+				<!-- Пароль -->
+				<StackPanel Orientation="Horizontal" Margin="0,0,0,12" VerticalAlignment="Center">
+					<TextBlock Text="Пароль:"
+                               Width="115"
+                               Foreground="#ccc"
+                               VerticalAlignment="Center"
+                               FontSize="14"/>
+					<PasswordBox x:Name="PasswordBox"
+                                 Height="35"
+                                 Width="202"
+                                 FontSize="14"
+                                 Background="#333"
+                                 Foreground="White"
+                                 BorderBrush="#555"
+                                 BorderThickness="1"/>
+				</StackPanel>
+
+				<!-- Подтверждение -->
+				<StackPanel Orientation="Horizontal" Margin="0,0,0,20" VerticalAlignment="Center">
+					<TextBlock Text="Подтверждение:"
+                               Width="115"
+                               Foreground="#ccc"
+                               VerticalAlignment="Center"
+                               FontSize="14"/>
+					<PasswordBox x:Name="ConfirmPasswordBox"
+                                 Height="35"
+                                 Width="202"
+                                 FontSize="14"
+                                 Background="#333"
+                                 Foreground="White"
+                                 BorderBrush="#555"
+                                 BorderThickness="1"/>
+				</StackPanel>
+			</StackPanel>
 
 			<Button Content="Сохранить"
                     Height="40"

@@ -250,18 +250,52 @@ namespace SpotifyLikePlayer.Views
         {
             var sb = new Storyboard();
 
-            var fadeOut = new DoubleAnimation(0, TimeSpan.FromMilliseconds(250));
+            // Плавное уменьшение масштаба (уходит "вглубь")
+            var scaleTransform = new ScaleTransform(1.0, 1.0);
+            this.RenderTransformOrigin = new Point(0.5, 0.5);
+            this.RenderTransform = scaleTransform;
+
+            var scaleX = new DoubleAnimation
+            {
+                To = 0.9,
+                Duration = TimeSpan.FromMilliseconds(250),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
+            };
+            Storyboard.SetTarget(scaleX, this);
+            Storyboard.SetTargetProperty(scaleX, new PropertyPath("RenderTransform.(ScaleTransform.ScaleX)"));
+
+            var scaleY = new DoubleAnimation
+            {
+                To = 0.9,
+                Duration = TimeSpan.FromMilliseconds(250),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
+            };
+            Storyboard.SetTarget(scaleY, this);
+            Storyboard.SetTargetProperty(scaleY, new PropertyPath("RenderTransform.(ScaleTransform.ScaleY)"));
+
+            // Плавное затухание окна
+            var fadeOut = new DoubleAnimation
+            {
+                To = 0.0,
+                Duration = TimeSpan.FromMilliseconds(250),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
+            };
             Storyboard.SetTarget(fadeOut, this);
             Storyboard.SetTargetProperty(fadeOut, new PropertyPath(Window.OpacityProperty));
 
+            // Добавляем анимации в Storyboard
+            sb.Children.Add(scaleX);
+            sb.Children.Add(scaleY);
             sb.Children.Add(fadeOut);
-            sb.Completed += (s, e) => Close();
+
+            sb.Completed += (s, e) => this.Close();
+
             sb.Begin();
         }
 
         private void CancelButton_Click(object sender, RoutedEventArgs e)
         {
-            Close();
+            AnimateAndClose();
         }
 
         private bool IsValidEmail(string email)

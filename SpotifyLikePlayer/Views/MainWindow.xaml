@@ -177,13 +177,13 @@
 
 						<StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
 							<materialDesign:PackIcon Kind="Album"
-                                     Width="29" Height="29"
+                                     Width="27" Height="27"
                                      Foreground="#CCCCCC"
                                      VerticalAlignment="Center"
                                      Opacity="0.8"/>
 							<TextBlock x:Name="MusicContextText"
                        Text="Вся музыка"
-                       FontSize="30"
+                       FontSize="26"
                        FontWeight="SemiBold"
                        Foreground="#DDDDDD"
                        VerticalAlignment="Center"
@@ -297,7 +297,7 @@
 						<Button.Content>
 							<StackPanel Orientation="Horizontal" Cursor="">
 								<materialDesign:PackIcon Kind="Music" Width="26" Height="26" Margin="0,0,6,0" Foreground="Lime"/>
-								<TextBlock Text="Изменить жанр для вас" FontSize="20" FontWeight="Bold"/>
+								<TextBlock Text="Изменить жанр" FontSize="20" FontWeight="Bold"/>
 							</StackPanel>
 						</Button.Content>
 					</Button>
@@ -313,6 +313,7 @@
          MouseDoubleClick="PlaylistsListBox_MouseDoubleClick"
          ItemsSource="{Binding Playlists}"
          SelectedItem="{Binding SelectedPlaylist}"
+         SelectionChanged="Playlist_SelectionChanged"
          Background="#121212"
          Foreground="White"
          BorderThickness="0">
@@ -430,151 +431,176 @@
 			</Border>
 
 			<ListView x:Name="SongsListView"
-              ItemsSource="{Binding Songs}"
-              SelectedItem="{Binding SelectedSong}"
-              Margin="10"
-              Background="#121212"
-              Foreground="White"
-              HorizontalAlignment="Stretch"
-			  VerticalAlignment="Stretch"
-    Grid.Row="1"
-    Grid.Column="0"
-              FontSize="20"
-			  SizeChanged="SongsListView_SizeChanged"
-              MouseDoubleClick="SongsListView_MouseDoubleClick">
+          ItemsSource="{Binding Songs}"
+          SelectedItem="{Binding SelectedSong, Mode=TwoWay}"
+          Margin="10"
+          Background="#121212"
+          Foreground="White"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch"
+          FontSize="18"
+          MouseDoubleClick="SongsListView_MouseDoubleClick"
+          VirtualizingPanel.IsVirtualizing="True"
+          VirtualizingPanel.VirtualizationMode="Recycling"
+          ScrollViewer.CanContentScroll="True"
+          BorderThickness="0"
+          Padding="4" Cursor="">
 
+				<!-- Панель для виртуализации -->
+				<ListView.ItemsPanel>
+					<ItemsPanelTemplate>
+						<VirtualizingStackPanel Orientation="Vertical"/>
+					</ItemsPanelTemplate>
+				</ListView.ItemsPanel>
+
+				<!-- Шаблон отображения каждой песни -->
+				<ListView.ItemTemplate>
+					<DataTemplate>
+						<Border Background="#1A1A1A"
+                    CornerRadius="8"
+                    Padding="8"
+                    Margin="17,3"
+                    SnapsToDevicePixels="True">
+							<Grid>
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="60"/>
+									<ColumnDefinition Width="*"/>
+									<ColumnDefinition Width="Auto"/>
+									<ColumnDefinition Width="Auto"/>
+								</Grid.ColumnDefinitions>
+
+								<!-- Обложка -->
+								<Image Source="{Binding CoverImage}"
+                           Width="50" Height="50"
+                           Stretch="UniformToFill"
+                           Margin="0,0,8,0"
+                           VerticalAlignment="Center"/>
+
+								<!-- Название, артист, индикатор IsPlaying -->
+								<StackPanel Grid.Column="1" VerticalAlignment="Center">
+									<StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+										<materialDesign:PackIcon Kind="Equalizer"
+                                                     Width="18" Height="18"
+                                                     Foreground="Lime"
+                                                     VerticalAlignment="Center"
+                                                     Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                     Margin="0,0,4,0"/>
+										<TextBlock Text="{Binding Title}"
+                                       FontWeight="Bold"
+                                       Foreground="White"
+                                       FontSize="18"
+                                       TextTrimming="CharacterEllipsis"/>
+									</StackPanel>
+									<TextBlock Text="{Binding Artist.Name}"
+                                   FontSize="14"
+                                   Foreground="#AAAAAA"
+                                   TextTrimming="CharacterEllipsis"/>
+								</StackPanel>
+
+								<!-- Длительность -->
+								<TextBlock Grid.Column="2"
+                               Text="{Binding Duration, StringFormat={}{0:mm\\:ss}}"
+                               VerticalAlignment="Center"
+                               Foreground="#BBBBBB"
+                               Margin="8,0"/>
+
+								<!-- Избранное -->
+								<Button Grid.Column="3"
+                            Style="{StaticResource FavoriteStarButton}"
+                            Click="FavoriteButton_Click"
+                            DataContext="{Binding}"
+                            ToolTip="Добавить в избранное"/>
+							</Grid>
+						</Border>
+					</DataTemplate>
+				</ListView.ItemTemplate>
+
+				<!-- Стиль контейнера для эффектов выбора и hover -->
 				<ListView.ItemContainerStyle>
 					<Style TargetType="ListViewItem">
-						<Setter Property="Background" Value="Transparent" />
-						<Setter Property="Foreground" Value="White" />
+						<Setter Property="Background" Value="Transparent"/>
+						<Setter Property="BorderThickness" Value="0"/>
+						<Setter Property="Padding" Value="0"/>
+						<Setter Property="SnapsToDevicePixels" Value="True"/>
+						<Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+						<Setter Property="RenderTransform">
+							<Setter.Value>
+								<ScaleTransform ScaleX="1" ScaleY="1"/>
+							</Setter.Value>
+						</Setter>
+
 						<Style.Triggers>
+							<!-- Hover -->
 							<Trigger Property="IsMouseOver" Value="True">
-								<Setter Property="Background" Value="#333333" />
+								<Setter Property="Background" Value="#222"/>
+								<Trigger.EnterActions>
+									<BeginStoryboard>
+										<Storyboard>
+											<DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)"
+                                                 To="1.02" Duration="0:0:0.15"/>
+											<DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)"
+                                                 To="1.02" Duration="0:0:0.15"/>
+										</Storyboard>
+									</BeginStoryboard>
+								</Trigger.EnterActions>
+								<Trigger.ExitActions>
+									<BeginStoryboard>
+										<Storyboard>
+											<DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)"
+                                                 To="1" Duration="0:0:0.15"/>
+											<DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)"
+                                                 To="1" Duration="0:0:0.15"/>
+										</Storyboard>
+									</BeginStoryboard>
+								</Trigger.ExitActions>
 							</Trigger>
+
+							<!-- Selected -->
 							<Trigger Property="IsSelected" Value="True">
-								<Setter Property="Background" Value="#444444" />
+								<Setter Property="Background" Value="#224422"/>
+								<Setter Property="FontWeight" Value="Bold"/>
 							</Trigger>
+
+							<!-- Playing song highlight -->
+							<DataTrigger Binding="{Binding IsPlaying}" Value="True">
+								<Setter Property="Background" Value="#335522"/>
+								<Setter Property="Foreground" Value="Lime"/>
+								<Setter Property="FontWeight" Value="Bold"/>
+							</DataTrigger>
 						</Style.Triggers>
 					</Style>
 				</ListView.ItemContainerStyle>
 
-				<ListView.View>
-					<GridView x:Name="SongsGridView">
-						<!-- Обложка -->
-						<GridViewColumn Width="100">
-							<GridViewColumn.CellTemplate>
-								<DataTemplate>
-									<Image Source="{Binding CoverImage}"
-                           Width="80" Height="80"
-                           Stretch="UniformToFill"
-                           Margin="5"/>
-								</DataTemplate>
-							</GridViewColumn.CellTemplate>
-						</GridViewColumn>
-
-						<!-- Название -->
-						<GridViewColumn Header="Название">
-							<GridViewColumn.CellTemplate>
-								<DataTemplate>
-									<TextBlock Text="{Binding Title}"
-                               TextTrimming="CharacterEllipsis"
-                               ToolTip="{Binding Title}"
-                               VerticalAlignment="Center"
-                               Margin="8,0,0,0"/>
-								</DataTemplate>
-							</GridViewColumn.CellTemplate>
-						</GridViewColumn>
-
-						<!-- Артист -->
-						<GridViewColumn Header="Артист">
-							<GridViewColumn.CellTemplate>
-								<DataTemplate>
-									<TextBlock Text="{Binding Artist.Name}"
-                               TextTrimming="CharacterEllipsis"
-                               ToolTip="{Binding Artist.Name}"
-                               VerticalAlignment="Center"
-                               Margin="8,0,0,0"/>
-								</DataTemplate>
-							</GridViewColumn.CellTemplate>
-						</GridViewColumn>
-
-						<!-- Альбом -->
-						<GridViewColumn Header="Альбом">
-							<GridViewColumn.CellTemplate>
-								<DataTemplate>
-									<TextBlock Text="{Binding Album.Title}"
-                               TextTrimming="CharacterEllipsis"
-                               ToolTip="{Binding Album.Title}"
-                               VerticalAlignment="Center"
-                               Margin="8,0,0,0"/>
-								</DataTemplate>
-							</GridViewColumn.CellTemplate>
-						</GridViewColumn>
-
-						<!-- Жанр -->
-						<GridViewColumn Header="Жанр">
-							<GridViewColumn.CellTemplate>
-								<DataTemplate>
-									<TextBlock Text="{Binding Genre}"
-                               TextTrimming="CharacterEllipsis"
-                               ToolTip="{Binding Genre}"
-                               VerticalAlignment="Center"
-                               Margin="8,0,0,0"/>
-								</DataTemplate>
-							</GridViewColumn.CellTemplate>
-						</GridViewColumn>
-
-						<!-- Длительность -->
-						<GridViewColumn>
-							<GridViewColumn.Header>
-								<StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-									<materialDesign:PackIcon Kind="ClockOutline" Width="18" Height="18" Foreground="White" />
-								</StackPanel>
-							</GridViewColumn.Header>
-							<GridViewColumn.DisplayMemberBinding>
-								<Binding Path="Duration" StringFormat="{}{0:mm\:ss}" />
-							</GridViewColumn.DisplayMemberBinding>
-						</GridViewColumn>
-
-						<!-- Избранное -->
-						<GridViewColumn Width="100">
-							<GridViewColumn.CellTemplate>
-								<DataTemplate>
-									<Button Style="{StaticResource FavoriteStarButton}"
-                            Click="FavoriteButton_Click"
-                            ToolTip="Добавить в избранное"
-                            DataContext="{Binding}" />
-								</DataTemplate>
-							</GridViewColumn.CellTemplate>
-						</GridViewColumn>
-					</GridView>
-				</ListView.View>
-
+				<!-- Контекстное меню -->
 				<ListView.ContextMenu>
 					<ContextMenu Opened="SongsContextMenu_Opened"
-                 Background="#2a2a2a"
-                 Foreground="White"
-                 BorderBrush="#444"
-                 BorderThickness="1"
-                 FontSize="14">
+                     Background="#2a2a2a"
+                     Foreground="White"
+                     BorderBrush="#444"
+                     BorderThickness="1"
+                     FontSize="14">
 						<MenuItem Header="Информация о песне" Click="SongsListView_ShowDetails_Click"/>
-						<MenuItem x:Name="AddToPlaylistMenu"
-                  Header="Добавить в плейлист"
-                  Foreground="LimeGreen">
+						<MenuItem Header="Скачать песню" Click="DownloadSong_Click">
+							<MenuItem.Icon>
+								<materialDesign:PackIcon Kind="Download" Foreground="LightSkyBlue" Width="18" Height="18"/>
+							</MenuItem.Icon>
 						</MenuItem>
-
+						<MenuItem x:Name="AddToPlaylistMenu"
+                      Header="Добавить в плейлист"
+                      Foreground="LimeGreen">
+						</MenuItem>
 						<MenuItem x:Name="RemoveFromPlaylistMenu"
-                  Header="Удалить из плейлиста"
-                  Foreground="#ff5555">
+                      Header="Удалить из плейлиста"
+                      Foreground="#ff5555">
 						</MenuItem>
 						<Separator Margin="3,2"/>
 						<MenuItem Header="Создать новый плейлист"
-                  Command="{Binding CreatePlaylistCommand}"
-                  Foreground="LightSkyBlue">
+                      Command="{Binding CreatePlaylistCommand}"
+                      Foreground="LightSkyBlue">
 							<MenuItem.Icon>
 								<materialDesign:PackIcon Kind="PlaylistPlus"
-                                         Width="18" Height="18"
-                                         Foreground="LightSkyBlue" />
+                                             Width="18" Height="18"
+                                             Foreground="LightSkyBlue" />
 							</MenuItem.Icon>
 						</MenuItem>
 					</ContextMenu>
@@ -582,7 +608,7 @@
 			</ListView>
 		</Grid>
 
-		<materialDesign:Card Grid.Row="2" Grid.ColumnSpan="2" Background="#181818">
+		<Grid Grid.Row="2" Grid.ColumnSpan="2" Background="#181818">
 			<Grid>
 				<Grid.ColumnDefinitions>
 					<ColumnDefinition Width="Auto" />
@@ -679,7 +705,7 @@
                             Width="100" Margin="5" VerticalAlignment="Center"/>
 				</StackPanel>
 			</Grid>
-		</materialDesign:Card>
+		</Grid>
 		<Border Grid.Row="2" Grid.ColumnSpan="2" x:Name="NotificationBorder"
         Background="#AA000000"
         CornerRadius="8"

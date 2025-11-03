@@ -19,6 +19,7 @@ using System.Windows.Controls.Primitives;
 using System.Collections.ObjectModel;
 using System.Windows.Media.Animation;
 using System.Drawing;
+using System.IO;
 
 namespace SpotifyLikePlayer
 {
@@ -45,6 +46,54 @@ namespace SpotifyLikePlayer
 
             ViewModel.PlayerService.SongChanged += OnSongChanged;
 
+        }
+
+        private void UpdateCurrentSongHighlight()
+        {
+            var currentSong = ViewModel.PlayerService.CurrentSong;
+            if (currentSong == null) return;
+
+            var match = ViewModel.Songs.FirstOrDefault(s => s.SongId == currentSong.SongId);
+            if (match != null)
+            {
+                SongsListView.SelectedItem = match;
+                SongsListView.ScrollIntoView(match);
+            }
+        }
+
+        private void DownloadSong_Click(object sender, RoutedEventArgs e)
+        {
+            if (!(SongsListView.SelectedItem is Song song))
+            {
+                ShowNotification("Выберите песню для скачивания", false);
+                return;
+            }
+
+            try
+            {
+                if (string.IsNullOrEmpty(song.FilePath))
+                {
+                    ShowNotification("Невозможно скачать: отсутствует путь к файлу.", false);
+                    return;
+                }
+
+                var dialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    Title = $"Сохранить песню - {song.Title}",
+                    FileName = $"{song.Title} - {song.Artist?.Name ?? "Неизвестный исполнитель"}",
+                    Filter = "Аудиофайл (*.mp3)|*.mp3|Все файлы (*.*)|*.*"
+                };
+
+                if (dialog.ShowDialog() == true)
+                {
+                    File.Copy(song.FilePath, dialog.FileName, overwrite: true);
+                    ShowNotification($"Песня '{song.Title}' успешно скачана!", true);
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowNotification($"Ошибка при скачивании: {ex.Message}", false);
+            }
         }
 
         private void SongsListView_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -96,8 +145,17 @@ namespace SpotifyLikePlayer
                 "• Быстрый поиск по названию, артисту и альбому\n" +
                 "• Просмотр информации о треке и альбоме\n" +
                 "• Автоматическое сохранение состояния\n\n" +
+
+                "Как пользоваться плеером?\n" +
+                "• Правая кнопка мыши - выбор действия с песней\n" +
+                "• Нижние кнопки - выбор метода прослушивания трека\n" +
+                "• Нажатие на звезду - создание плейлиста и добавление в Favorite\n" +
+                "• Левая кнопка мыши по плейлистам - выбрать плейлист для прослушивания\n" +
+                "• Поисковая строка - нахождение вашей любимой песни\n" +
+                "• Изменить жанр - изменение жанра музыки для вас\n\n" +
                 "Разработчик: pizamooo\n" +
-                "Версия: 1.0";
+                "Версия: 1.0\n\n" +
+                "Спасибо за использование приложения!";
 
             MessageBox.Show(info, "О программе", MessageBoxButton.OK, MessageBoxImage.Information);
         }
@@ -109,12 +167,14 @@ namespace SpotifyLikePlayer
             foreach (var s in allSongs)
                 ViewModel.Songs.Add(s);
 
-            // 2. Сбрасываем выбранный плейлист и альбом
             ViewModel.SelectedPlaylist = null;
-
+            ViewModel.PlayerService.UpdatePlaylist(ViewModel.Songs);
             UpdateMusicContextText("Вся музыка");
-
             ViewModel.OnPropertyChanged(nameof(ViewModel.Songs));
+            Dispatcher.InvokeAsync(() =>
+            {
+                UpdateCurrentSongHighlight();
+            }, System.Windows.Threading.DispatcherPriority.Background);
         }
 
         private void UpdateMusicContextText(string text)
@@ -156,7 +216,6 @@ namespace SpotifyLikePlayer
             var player = ViewModel.PlayerService;
             player.ToggleRepeatMode();
 
-            // Меняем иконку в зависимости от режима
             switch (player.RepeatModeState)
             {
                 case SpotifyLikePlayer.Services.MediaPlayerService.RepeatMode.None:
@@ -182,7 +241,19 @@ namespace SpotifyLikePlayer
 
         private void OnSongChanged(Song song)
         {
-            HideSongInfo();
+            Dispatcher.Invoke(() =>
+            {
+                if (song == null)
+                    return;
+
+                var match = ViewModel.Songs.FirstOrDefault(s => s.SongId == song.SongId);
+                if (match != null)
+                {
+                    SongsListView.SelectedItem = match;
+                    SongsListView.ScrollIntoView(match);
+                }
+            });
+            ViewModel.CurrentSong = song;
         }
 
         public void OnSongChangedExternally()
@@ -263,6 +334,8 @@ namespace SpotifyLikePlayer
                 .ToList();
 
             UpdateSongsList(albumSongs);
+            ViewModel.UpdateFavoriteFlags();
+            UpdateCurrentSongHighlight();
 
             if (ViewModel.Songs != null && ViewModel.Songs.Any())
             {
@@ -273,6 +346,9 @@ namespace SpotifyLikePlayer
 
             HideSongInfo();
             UpdateMusicContextText("");
+
+            ViewModel.SyncSelectedSongWithCurrent();
+            ViewModel.PlayerService.UpdatePlaylist(ViewModel.Songs);
         }
 
         public void OnTrackSwitched()
@@ -287,6 +363,8 @@ namespace SpotifyLikePlayer
             {
                 SuggestionsPopup.IsOpen = false;
                 ResetSongsList();
+                UpdateCurrentSongHighlight();
+                Keyboard.ClearFocus();
                 return;
             }
 
@@ -315,6 +393,8 @@ namespace SpotifyLikePlayer
             SuggestionsPopup.IsOpen = suggestions.Any();
 
             UpdateSongsList(results);
+            UpdateCurrentSongHighlight();
+            ViewModel.PlayerService.UpdatePlaylist(ViewModel.Songs);
         }
 
         private void SuggestionsList_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -340,20 +420,15 @@ namespace SpotifyLikePlayer
             {
                 if (selected == null) return;
 
-                // Закрываем popup
                 SuggestionsPopup.IsOpen = false;
 
-                // Ставим текст в SearchBox (для красоты)
                 SearchBox.Text = selected.Title;
 
-                // Обновляем список песен (можно все найденные или только эту)
                 UpdateSongsList(new List<Song> { selected });
 
-                // Выделяем её в таблице
                 SongsListView.SelectedItem = selected;
                 SongsListView.ScrollIntoView(selected);
 
-                // Снимаем фокус с TextBox
                 Keyboard.ClearFocus();
             }
             catch (Exception ex)
@@ -366,7 +441,6 @@ namespace SpotifyLikePlayer
         {
             if (e.Key == Key.Enter)
             {
-                // Если открыт Popup и выбрана подсказка — применяем её
                 if (SuggestionsPopup.IsOpen && SuggestionsList.SelectedItem is Song selectedSong)
                 {
                     SelectSuggestion(selectedSong);
@@ -375,7 +449,6 @@ namespace SpotifyLikePlayer
                     return;
                 }
 
-                // Иначе — выполняем обычный поиск по введённому тексту
                 string query = SearchBox.Text?.Trim();
                 if (string.IsNullOrEmpty(query))
                 {
@@ -401,7 +474,6 @@ namespace SpotifyLikePlayer
             }
             else if (e.Key == Key.Down)
             {
-                // Навигация вниз по списку подсказок
                 if (SuggestionsPopup.IsOpen && SuggestionsList.Items.Count > 0)
                 {
                     int idx = SuggestionsList.SelectedIndex;
@@ -413,7 +485,6 @@ namespace SpotifyLikePlayer
             }
             else if (e.Key == Key.Up)
             {
-                // Навигация вверх по списку подсказок
                 if (SuggestionsPopup.IsOpen && SuggestionsList.Items.Count > 0)
                 {
                     int idx = SuggestionsList.SelectedIndex;
@@ -431,7 +502,7 @@ namespace SpotifyLikePlayer
             if (!(sender is ListBox lb)) return;
             if (lb.Items.Count == 0) return;
 
-            int delta = e.Delta > 0 ? -1 : 1; // вверх уменьшает индекс
+            int delta = e.Delta > 0 ? -1 : 1;
             int idx = lb.SelectedIndex;
             if (idx < 0) idx = 0;
             idx += delta;
@@ -450,6 +521,7 @@ namespace SpotifyLikePlayer
                     ViewModel.Songs.Add(s);
 
                 ViewModel.OnPropertyChanged(nameof(ViewModel.Songs));
+                ViewModel.UpdateFavoriteFlags();
             });
         }
 
@@ -473,8 +545,9 @@ namespace SpotifyLikePlayer
                         ViewModel.Songs.Add(s);
                 }
                 ViewModel.OnPropertyChanged(nameof(ViewModel.Songs));
+                ViewModel.UpdateFavoriteFlags();
+                UpdateCurrentSongHighlight();
             });
-            UpdateMusicContextText("");
         }
 
         private void PerformSearch(string query)
@@ -525,20 +598,17 @@ namespace SpotifyLikePlayer
                     }
                 };
 
-                // при выборе жанра
                 item.Click += (s, ev) =>
                 {
-                    // тут подгружаем песни по жанру
                     ViewModel.LoadSongsByGenre(genre);
-
-                    // уведомление
+                    UpdateCurrentSongHighlight();
                     ShowNotification($"Показаны треки жанра: {genre}", true);
+                    ViewModel.PlayerService.UpdatePlaylist(ViewModel.Songs);
                 };
 
                 menu.Items.Add(item);
             }
 
-            // Привязываем контекстное меню к кнопке
             menu.PlacementTarget = ChangeGenreButton;
             menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
             menu.IsOpen = true;
@@ -550,6 +620,9 @@ namespace SpotifyLikePlayer
             {
                 var vm = DataContext as MainViewModel;
                 vm?.LoadPlaylistSongs(selectedPlaylist);
+                PlaylistsListBox.SelectedItem = selectedPlaylist;
+                vm.SelectedPlaylist = selectedPlaylist;
+                UpdateCurrentSongHighlight();
             }
             UpdateMusicContextText("");
         }
@@ -591,15 +664,12 @@ namespace SpotifyLikePlayer
             if (addMenuItem != null)
             {
                 addMenuItem.Items.Clear();
-                // Для каждого плейлиста — добавляем подпункт; если песня уже в плейлисте — отключаем пункт
                 foreach (var pl in vm.Playlists)
                 {
-                    // Проверяем наличие песни в плейлисте — читаем из БД (на случай, если vm.Playlists[].Songs не заполнен)
                     var plSongs = vm._dbService.GetPlaylistSongs(pl.PlaylistId);
                     bool contains = plSongs?.Any(s => s.SongId == song.SongId) ?? false;
 
                     var sub = new MenuItem { Header = pl.Name, IsEnabled = !contains };
-                    // назначаем команду или обработчик
                     if (vm.AddToPlaylistCommand != null)
                     {
                         sub.Command = vm.AddToPlaylistCommand;
@@ -607,7 +677,6 @@ namespace SpotifyLikePlayer
                     }
                     else
                     {
-                        // если команды нет, повесим Click
                         sub.Click += (_, __) => vm.AddToPlaylist(Tuple.Create(pl, song));
                     }
                     addMenuItem.Items.Add(sub);
@@ -618,7 +687,6 @@ namespace SpotifyLikePlayer
             if (removeMenuItem != null)
             {
                 removeMenuItem.Items.Clear();
-                // Добавим только те плейлисты, где песня есть
                 bool any = false;
                 foreach (var pl in vm.Playlists)
                 {
@@ -642,7 +710,6 @@ namespace SpotifyLikePlayer
 
                 if (!any)
                 {
-                    // если ни в одном — покажем disabled элемент "Нет в плейлистах"
                     var none = new MenuItem { Header = "Песня не найдена в плейлистах", IsEnabled = false };
                     removeMenuItem.Items.Add(none);
                 }
@@ -656,33 +723,30 @@ namespace SpotifyLikePlayer
 
             if (sender is Button button && button.DataContext is Song song)
             {
-                // Выполним команду (MVVM way)
                 var cmd = vm.AddToFavoritesCommand;
                 if (cmd != null && cmd.CanExecute(song))
                 {
                     cmd.Execute(song);
                     return;
                 }
-
-                // Альтернатива: вызвать публичный метод VM (если есть)
-                // vm.ToggleFavorite(song);
             }
         }
 
         private void Playlist_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            var viewModel = (MainViewModel)DataContext;
-            if (viewModel.SelectedPlaylist != null)
-            {
-                viewModel.LoadPlaylistSongs(viewModel.SelectedPlaylist);
-            }
-            else
-            {
-                viewModel.Songs = viewModel._dbService.GetSongs() ?? new ObservableCollection<Song>();
-                viewModel.OnPropertyChanged(nameof(viewModel.Songs));
-            }
 
             UpdateMusicContextText("");
+
+            if (ViewModel.SelectedPlaylist != null)
+            {
+                ViewModel.LoadPlaylistSongs(ViewModel.SelectedPlaylist);
+                ViewModel.PlayerService.UpdatePlaylist(ViewModel.Songs);
+            }
+
+            Dispatcher.InvokeAsync(() =>
+            {
+                UpdateCurrentSongHighlight();
+            }, System.Windows.Threading.DispatcherPriority.Background);
         }
 
         private void ProgressSlider_MouseMove(object sender, MouseEventArgs e)

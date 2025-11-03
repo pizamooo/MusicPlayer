@@ -69,6 +69,20 @@ namespace SpotifyLikePlayer.Services
             CompositionTarget.Rendering += OnRendering;
         }
 
+        public void UpdatePlaylist(ObservableCollection<Song> newPlaylist)
+        {
+            _playlist = newPlaylist;
+            if (CurrentSong != null)
+            {
+                _currentIndex = _playlist.ToList().FindIndex(s => s.SongId == CurrentSong.SongId);
+                if (_currentIndex < 0) _currentIndex = 0;
+            }
+            else
+            {
+                _currentIndex = 0;
+            }
+        }
+
         private void OnMediaEnded(object sender, EventArgs e)
         {
             if (_playlist == null || _playlist.Count == 0)
@@ -182,7 +196,7 @@ namespace SpotifyLikePlayer.Services
             _playlist = playlist;
             _currentIndex = index;
             _mediaPlayer.Open(new Uri(song.FilePath));
-            _mediaPlayer.Position = TimeSpan.FromSeconds(0); // Сбрасываем на начало
+            _mediaPlayer.Position = TimeSpan.FromSeconds(0);
             _mediaPlayer.Play();
             _isPlaying = true;
             _isPaused = false;
@@ -193,7 +207,7 @@ namespace SpotifyLikePlayer.Services
             OnPropertyChanged(nameof(IsPlaying));
             OnPropertyChanged(nameof(IsPaused));
 
-            OnSongChanged(song);
+            SongChanged?.Invoke(song);
         }
 
         public void Pause()
@@ -224,48 +238,64 @@ namespace SpotifyLikePlayer.Services
 
         public void PlayNext()
         {
-            if (_playlist == null || _playlist.Count == 0) return;
+            if (_playlist == null || _playlist.Count == 0)
+                return;
+
+            int nextIndex = _currentIndex;
 
             if (_isShuffleEnabled)
             {
-                int nextIndex = _random.Next(0, _playlist.Count);
-                Play(_playlist[nextIndex], _playlist, nextIndex);
+                nextIndex = _random.Next(0, _playlist.Count);
             }
             else
             {
-                _currentIndex++;
-                if (_currentIndex >= _playlist.Count)
+                nextIndex = _currentIndex + 1;
+
+                if (nextIndex >= _playlist.Count)
                 {
                     if (_repeatMode == RepeatMode.All)
-                        _currentIndex = 0;
+                        nextIndex = 0;
                     else
-                        return; // конец плейлиста
+                        return; // конец плейлиста — ничего не делаем
                 }
-                Play(_playlist[_currentIndex], _playlist, _currentIndex);
             }
+
+            if (nextIndex < 0 || nextIndex >= _playlist.Count)
+                return;
+
+            _currentIndex = nextIndex;
+            Play(_playlist[_currentIndex], _playlist, _currentIndex);
         }
 
         public void PlayPrevious()
         {
-            if (_playlist == null || _playlist.Count == 0) return;
+            if (_playlist == null || _playlist.Count == 0)
+                return;
+
+            int prevIndex = _currentIndex;
 
             if (_isShuffleEnabled)
             {
-                int prevIndex = _random.Next(0, _playlist.Count);
-                Play(_playlist[prevIndex], _playlist, prevIndex);
+                prevIndex = _random.Next(0, _playlist.Count);
             }
             else
             {
-                _currentIndex--;
-                if (_currentIndex < 0)
+                prevIndex = _currentIndex - 1;
+
+                if (prevIndex < 0)
                 {
                     if (_repeatMode == RepeatMode.All)
-                        _currentIndex = _playlist.Count - 1;
+                        prevIndex = _playlist.Count - 1;
                     else
-                        return; // начало плейлиста
+                        return;
                 }
-                Play(_playlist[_currentIndex], _playlist, _currentIndex);
             }
+
+            if (prevIndex < 0 || prevIndex >= _playlist.Count)
+                return;
+
+            _currentIndex = prevIndex;
+            Play(_playlist[_currentIndex], _playlist, _currentIndex);
         }
 
         public void ToggleShuffle()

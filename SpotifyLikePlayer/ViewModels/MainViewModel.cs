@@ -25,6 +25,7 @@ namespace SpotifyLikePlayer.ViewModels
         private const string DefaultMusicPath = @"C:\Users\dobry\OneDrive\Documents\MusicForProject";  // путь песен
 
         private Song _currentSong;
+        public ObservableCollection<Song> AllSongs { get; set; } = new ObservableCollection<Song>();
 
         public Song CurrentSong
         {
@@ -146,6 +147,7 @@ namespace SpotifyLikePlayer.ViewModels
 
                 foreach (var song in filteredSongs)
                     Songs.Add(song);
+                UpdateFavoriteFlags();
             }
             catch (Exception ex)
             {
@@ -433,19 +435,23 @@ namespace SpotifyLikePlayer.ViewModels
             }
         }
 
-        private void SyncSelectedSongWithCurrent()
+        public void SyncSelectedSongWithCurrent()
         {
             if (PlayerService.CurrentSong != null && Songs != null)
             {
                 SelectedSong = Songs.FirstOrDefault(s => s.SongId == PlayerService.CurrentSong.SongId);
                 OnPropertyChanged(nameof(SelectedSong));
 
-                // Автоматически скроллим ListView к текущему треку
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     var main = Application.Current.Windows.OfType<MainWindow>().FirstOrDefault();
                     main?.SongsListView?.ScrollIntoView(SelectedSong);
                     main?.SongsListView?.UpdateLayout();
+
+                    foreach (var s in Songs)
+                    {
+                        s.IsPlaying = (s.SongId == PlayerService.CurrentSong.SongId);
+                    }
                 });
             }
         }
@@ -512,9 +518,11 @@ namespace SpotifyLikePlayer.ViewModels
             SelectedPlaylist = favoritePlaylist;
             UpdateFavoritePlaylist();
             Console.WriteLine($"Loaded {Songs.Count} songs from Favorite playlist.");
+
+            SyncSelectedSongWithCurrent();
         }
 
-        private void UpdateFavoriteFlags()
+        public void UpdateFavoriteFlags()
         {
             var favoritePlaylist = Playlists.FirstOrDefault(p => p.Name == "Favorite");
             var favoriteIds = favoritePlaylist != null
@@ -549,11 +557,15 @@ namespace SpotifyLikePlayer.ViewModels
             Console.WriteLine("[Home] Loading all songs...");
 
             var allSongs = _dbService.GetSongs() ?? new ObservableCollection<Song>();
+
             Application.Current.Dispatcher.Invoke(() =>
             {
+                AllSongs.Clear();
                 Songs.Clear();
+
                 foreach (var song in allSongs)
                 {
+                    AllSongs.Add(song);
                     Songs.Add(song);
                 }
             });
@@ -570,7 +582,6 @@ namespace SpotifyLikePlayer.ViewModels
 
             song.IsFavoriteLocal = !song.IsFavoriteLocal;
 
-            // Найти плейлист Favorite (создать, если нет)
             var favoritePlaylist = Playlists.FirstOrDefault(p => p.Name.Equals("Favorite", StringComparison.OrdinalIgnoreCase));
             if (favoritePlaylist == null)
             {
@@ -608,7 +619,6 @@ namespace SpotifyLikePlayer.ViewModels
                 inDb = (int)cmd.ExecuteScalar() > 0;
             }
 
-            // Добавление / удаление из Favorite
             if (song.IsFavoriteLocal && !inDb)
             {
                 using (var conn = new SqlConnection(_dbService._connectionString))
@@ -636,7 +646,6 @@ namespace SpotifyLikePlayer.ViewModels
                 song.IsFavorite = false;
             }
 
-            // 🔄 Синхронизируем во всех местах
             Application.Current.Dispatcher.Invoke(() =>
             {
                 foreach (var s in Songs.Where(x => x.SongId == song.SongId))
@@ -730,6 +739,8 @@ namespace SpotifyLikePlayer.ViewModels
 
                 SelectedPlaylist = playlist;
                 OnPropertyChanged(nameof(Songs));
+
+                SyncSelectedSongWithCurrent();
             });
         }
 
@@ -756,12 +767,13 @@ namespace SpotifyLikePlayer.ViewModels
             CurrentUser = _dbService.Authenticate(username, password);
             if (CurrentUser != null)
             {
-                Songs = _dbService.GetSongs();
+                var allSongs = _dbService.GetSongs();
+                AllSongs = new ObservableCollection<Song>(allSongs);
+                Songs = new ObservableCollection<Song>(allSongs);
                 Playlists = _dbService.GetPlaylists(CurrentUser.UserId);
                 UpdateFavoriteFlags();
                 OnPropertyChanged(nameof(Songs));
                 OnPropertyChanged(nameof(Playlists));
-
                 AddSongsFromDirectory(DefaultMusicPath);
             }
         }
@@ -772,7 +784,7 @@ namespace SpotifyLikePlayer.ViewModels
             return success;
         }
 
-        private void PlaySelectedSong()
+        public void PlaySelectedSong()
         {
             if (SelectedSong != null)
             {
@@ -828,29 +840,6 @@ namespace SpotifyLikePlayer.ViewModels
         {
             if (Songs == null) Songs = new ObservableCollection<Song>();
             Songs.Add(song);
-        }
-
-        public void SearchSongs(string searchText)
-        {
-            if (string.IsNullOrEmpty(searchText))
-            {
-                Songs = SelectedPlaylist != null
-                    ? _dbService.GetPlaylistSongs(SelectedPlaylist.PlaylistId)
-                    : _dbService.GetSongs();
-            }
-            else
-            {
-                var allSongs = _dbService.GetSongs();
-                Songs = new ObservableCollection<Song>(
-                    allSongs.Where(s =>
-                        s.Title.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0 ||
-                        s.Artist.Name.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0 ||
-                        s.Album.Title.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0 ||
-                        s.Genre.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0)
-                );
-            }
-
-            OnPropertyChanged(nameof(Songs));
         }
 
         public void OnPropertyChanged(string propertyName)
@@ -928,7 +917,6 @@ namespace SpotifyLikePlayer.ViewModels
             OnPropertyChanged(nameof(Songs));
         }
 
-        // В XAML биндим на PlayerService.IsPlaying, так как сервис доступен через ViewModel
         public MediaPlayerService PlayerService => _playerService;
 
 
