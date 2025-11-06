@@ -14,6 +14,7 @@ using System.Windows.Shapes;
 
 using System.Text.RegularExpressions;
 using SpotifyLikePlayer.ViewModels;
+using System.Windows.Media.Animation;
 namespace SpotifyLikePlayer.Views
 {
     /// <summary>
@@ -21,11 +22,65 @@ namespace SpotifyLikePlayer.Views
     /// </summary>
     public partial class ForgotPasswordWindow : Window
     {
+        private bool _isClosingAnimated = false;
         private MainViewModel _vm;
         public ForgotPasswordWindow(MainViewModel vm)
         {
             InitializeComponent();
             _vm = vm;
+        }
+
+        private void CloseButton_Click(object sender, RoutedEventArgs e)
+        {
+            this.Close();
+        }
+
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (_isClosingAnimated)
+                return;
+
+            e.Cancel = true;
+            _isClosingAnimated = true;
+
+            var storyboard = new Storyboard();
+
+            var scaleX = new DoubleAnimation(1.0, 0.9, TimeSpan.FromMilliseconds(150));
+            var scaleY = new DoubleAnimation(1.0, 0.9, TimeSpan.FromMilliseconds(150));
+            var fade = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(150));
+
+            Storyboard.SetTarget(scaleX, MainContainer);
+            Storyboard.SetTarget(scaleY, MainContainer);
+            Storyboard.SetTarget(fade, this);
+
+            Storyboard.SetTargetProperty(scaleX, new PropertyPath("(UIElement.RenderTransform).(ScaleTransform.ScaleX)"));
+            Storyboard.SetTargetProperty(scaleY, new PropertyPath("(UIElement.RenderTransform).(ScaleTransform.ScaleY)"));
+            Storyboard.SetTargetProperty(fade, new PropertyPath("Opacity"));
+
+            storyboard.Children.Add(scaleX);
+            storyboard.Children.Add(scaleY);
+            storyboard.Children.Add(fade);
+
+            storyboard.Completed += (s, args) => this.Close();
+            storyboard.Begin();
+        }
+
+        private void GoBackToLogin_Click(object sender, RoutedEventArgs e)
+        {
+            this.Close();
+        }
+
+        private void Window_Closed(object sender, EventArgs e)
+        {
+            if (App.CurrentLoginWindow != null)
+            {
+                App.CurrentLoginWindow.WindowState = WindowState.Normal;
+                App.CurrentLoginWindow.Activate();
+            }
+            else
+            {
+                new LoginWindow().Show();
+            }
         }
 
         private void ResetPassword_Click(object sender, RoutedEventArgs e)

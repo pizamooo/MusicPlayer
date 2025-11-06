@@ -17,6 +17,16 @@
 			<conv:FavoriteSymbolConverter x:Key="FavoriteSymbolConverter"/>
 			<conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
 			<conv:FavoriteIconConverter x:Key="FavoriteIconConverter" />
+			<conv:FavoriteVisibilityConverter x:Key="FavoriteVisibilityConverter" />
+			<conv:RegularPlaylistVisibilityConverter x:Key="RegularPlaylistVisibilityConverter" />
+			<conv:WidthToBoolConverter x:Key="WidthToBoolConverter" />
+			<conv:SubtractConverter x:Key="SubtractConverter" />
+			<conv:BoolToColorConverter x:Key="BoolToColorConverter"/>
+			<conv:PlayPauseIconConverter x:Key="PlayPauseIconConverter"/>
+			<conv:ProgressWidthConverter x:Key="ProgressWidthConverter"/>
+			<conv:RepeatModeToColorConverter x:Key="RepeatModeToColorConverter"/>
+			<conv:RepeatModeToIconConverter x:Key="RepeatModeToIconConverter"/>
+			<conv:SecondsToTimeStringConverter x:Key="SecondsToTimeStringConverter"/>
 
 			<Style x:Key="FavoriteStarButton" TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
 				<Setter Property="FontSize" Value="26"/>

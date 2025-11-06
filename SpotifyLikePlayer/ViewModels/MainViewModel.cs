@@ -129,7 +129,6 @@ namespace SpotifyLikePlayer.ViewModels
 
                     if (_playerService.CurrentSong != null)
                     {
-                        // Отписываемся, если уже слушали старую песню (во избежание утечек)
                         _playerService.CurrentSong.PropertyChanged -= CurrentSong_PropertyChanged;
                         _playerService.CurrentSong.PropertyChanged += CurrentSong_PropertyChanged;
                     }
@@ -757,6 +756,7 @@ namespace SpotifyLikePlayer.ViewModels
                     UpdateFavoriteFlags();
                     OnPropertyChanged(nameof(Songs));
                     OnPropertyChanged(nameof(Playlists));
+                    _ = AddSongsFromDirectory(DefaultMusicPath);
                 }
             }
             return success;
@@ -774,7 +774,7 @@ namespace SpotifyLikePlayer.ViewModels
                 UpdateFavoriteFlags();
                 OnPropertyChanged(nameof(Songs));
                 OnPropertyChanged(nameof(Playlists));
-                AddSongsFromDirectory(DefaultMusicPath);
+                _ = AddSongsFromDirectory(DefaultMusicPath);
             }
         }
 
@@ -858,32 +858,34 @@ namespace SpotifyLikePlayer.ViewModels
             {
                 try
                 {
-                    // Пропускаем, если трек уже есть
                     if (_dbService.SongExists(file))
                         continue;
 
                     using (var tagFile = TagLib.File.Create(file))
                     {
-                        // Заголовок
                         string title = !string.IsNullOrWhiteSpace(tagFile.Tag.Title)
                             ? tagFile.Tag.Title
                             : Path.GetFileNameWithoutExtension(file);
 
-                        // Исполнитель
                         string artistName = tagFile.Tag.FirstPerformer ?? "Unknown Artist";
                         int artistId = _dbService.AddOrGetArtist(artistName);
 
-                        // Альбом
-                        string albumTitle = tagFile.Tag.Album ?? "Single";
-                        int albumId = _dbService.AddOrGetAlbum(albumTitle, artistId);
-
-                        // Жанр
+                        string albumTitle = tagFile.Tag.Album;
+                        int releaseYear = tagFile.Tag.Year > 0 ? (int)tagFile.Tag.Year : DateTime.Now.Year;
                         string genre = tagFile.Tag.FirstGenre ?? "Unknown";
 
-                        // Длительность (в секундах)
-                        TimeSpan duration = tagFile.Properties.Duration;
+                        if (string.IsNullOrWhiteSpace(albumTitle))
+                        {
+                            albumTitle = $"{artistName} - Single {releaseYear}";
+                        }
 
-                        // Создаём объект песни
+                        int albumId = _dbService.AddOrGetAlbum(albumTitle, artistId, releaseYear);
+
+                        TimeSpan duration = tagFile.Properties.Duration;
+                        var correctDuration = new TimeSpan(0, duration.Minutes, duration.Seconds);
+
+                        var cover = _dbService.GetCoverImage(file);
+
                         var song = new Song
                         {
                             Title = title,
@@ -891,16 +893,14 @@ namespace SpotifyLikePlayer.ViewModels
                             AlbumId = albumId,
                             Genre = genre,
                             FilePath = file,
-                            Duration = TimeSpan.FromSeconds(Math.Round(tagFile.Properties.Duration.TotalSeconds, 0)),
+                            Duration = correctDuration,
                             Artist = new Artist { ArtistId = artistId, Name = artistName },
-                            Album = new Album { AlbumId = albumId, Title = albumTitle },
-                            CoverImage = _dbService.GetCoverImage(file)
+                            Album = new Album { AlbumId = albumId, Title = albumTitle, ArtistId = artistId, ReleaseYear = releaseYear },
+                            CoverImage = cover
                         };
 
-                        // Добавляем в БД
                         _dbService.AddSong(song);
 
-                        // Добавляем в коллекцию UI
                         await Application.Current.Dispatcher.InvokeAsync(() =>
                         {
                             Songs.Add(song);
@@ -913,7 +913,6 @@ namespace SpotifyLikePlayer.ViewModels
                 }
             }
 
-            // Обновляем UI
             OnPropertyChanged(nameof(Songs));
         }
 

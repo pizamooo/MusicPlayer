@@ -4,20 +4,21 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Data;
 
 namespace SpotifyLikePlayer.Converters
 {
-    [ValueConversion(typeof(bool), typeof(Visibility))]
-    public class BoolToVisibilityConverter : IValueConverter
+    public class WidthToBoolConverter : IValueConverter
     {
+        public double Threshold { get; set; } = 500;
+
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            if (value is bool b)
-                return b ? Visibility.Visible : Visibility.Collapsed;
-
-            return Visibility.Collapsed;
+            if (value is double actualWidth)
+            {
+                return actualWidth >= Threshold;
+            }
+            return false;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

@@ -10,11 +10,112 @@
 		xmlns:componentModel="clr-namespace:System.ComponentModel;assembly=WindowsBase"
 		xmlns:models="clr-namespace:SpotifyLikePlayer.Models"
 		mc:Ignorable="d"
-        Title="PATHTRACK" Height="600" Width="860" SizeToContent="Manual" ResizeMode="CanResize" MinWidth="900" MinHeight="600"
+        Title="PATHTRACK" Height="600" Width="860" SizeToContent="Manual" ResizeMode="CanResize" MinWidth="1050" MinHeight="700"
         DataContext="{Binding RelativeSource={RelativeSource Self}, Path=ViewModel}"
         WindowStartupLocation="CenterScreen" WindowState="Maximized" Topmost="False">
 	<Window.Resources>
+		<!-- Невидимый стиль для RepeatButton (для track клика) -->
+		<Style x:Key="InvisibleRepeatButtonStyle" TargetType="RepeatButton">
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="RepeatButton">
+						<Border Background="Transparent"/>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+		</Style>
+		<Style x:Key="MediaPlayerSliderStyle" TargetType="Slider">
+			<Setter Property="SnapsToDevicePixels" Value="True"/>
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="Slider">
+						<Grid Height="28">
+							<Border Height="6" Background="#444" CornerRadius="3" VerticalAlignment="Center" Margin="8,0"/>
+
+							<Track x:Name="PART_Track" IsDirectionReversed="False" VerticalAlignment="Center" Margin="8,0">
+								<Track.DecreaseRepeatButton>
+									<RepeatButton Style="{StaticResource InvisibleRepeatButtonStyle}">
+										<RepeatButton.Template>
+											<ControlTemplate TargetType="RepeatButton">
+												<Border Background="#1DB954" CornerRadius="3" Height="7" VerticalAlignment="Center"/>
+											</ControlTemplate>
+										</RepeatButton.Template>
+									</RepeatButton>
+								</Track.DecreaseRepeatButton>
+								<Track.IncreaseRepeatButton>
+									<RepeatButton Style="{StaticResource InvisibleRepeatButtonStyle}"/>
+								</Track.IncreaseRepeatButton>
+								<Track.Thumb>
+									<Thumb x:Name="PART_Thumb" Width="18" Height="18" Cursor="Hand" VerticalAlignment="Center">
+										<Thumb.Template>
+											<ControlTemplate TargetType="Thumb">
+												<Ellipse Fill="#1DB954" Stroke="#FFFFFF" StrokeThickness="1.5" Opacity="0.9"/>
+											</ControlTemplate>
+										</Thumb.Template>
+									</Thumb>
+								</Track.Thumb>
+							</Track>
+						</Grid>
+
+						<ControlTemplate.Triggers>
+							<Trigger Property="IsMouseOver" Value="True">
+								<Setter TargetName="PART_Thumb" Property="Opacity" Value="1" />
+							</Trigger>
+							<Trigger SourceName="PART_Thumb" Property="IsDragging" Value="True">
+								<Setter TargetName="PART_Thumb" Property="Opacity" Value="1" />
+							</Trigger>
+						</ControlTemplate.Triggers>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+		</Style>
+		<Style x:Key="VolumeSliderStyle" TargetType="Slider">
+			<Setter Property="SnapsToDevicePixels" Value="True"/>
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="Slider">
+						<Grid Height="20">
+							<Border Height="5" Background="#444" CornerRadius="2.5" VerticalAlignment="Center" Margin="6,0"/>
+
+							<Track x:Name="PART_Track" IsDirectionReversed="False" VerticalAlignment="Center" Margin="6,0">
+								<Track.DecreaseRepeatButton>
+									<RepeatButton Style="{StaticResource InvisibleRepeatButtonStyle}">
+										<RepeatButton.Template>
+											<ControlTemplate TargetType="RepeatButton">
+												<Border Background="#1DB954" CornerRadius="2.5" Height="5" VerticalAlignment="Center"/>
+											</ControlTemplate>
+										</RepeatButton.Template>
+									</RepeatButton>
+								</Track.DecreaseRepeatButton>
+								<Track.IncreaseRepeatButton>
+									<RepeatButton Style="{StaticResource InvisibleRepeatButtonStyle}"/>
+								</Track.IncreaseRepeatButton>
+								<Track.Thumb>
+									<Thumb x:Name="PART_Thumb" Width="14" Height="14" Cursor="Hand" VerticalAlignment="Center">
+										<Thumb.Template>
+											<ControlTemplate TargetType="Thumb">
+												<Ellipse Fill="#1DB954" Stroke="#FFFFFF" StrokeThickness="1" Opacity="0.85"/>
+											</ControlTemplate>
+										</Thumb.Template>
+									</Thumb>
+								</Track.Thumb>
+							</Track>
+						</Grid>
+
+						<ControlTemplate.Triggers>
+							<Trigger Property="IsMouseOver" Value="True">
+								<Setter TargetName="PART_Thumb" Property="Opacity" Value="1" />
+							</Trigger>
+							<Trigger SourceName="PART_Thumb" Property="IsDragging" Value="True">
+								<Setter TargetName="PART_Thumb" Property="Opacity" Value="1" />
+							</Trigger>
+						</ControlTemplate.Triggers>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+		</Style>
 		<converters:SecondsToTimeConverter x:Key="SecondsToTimeConverter" />
+		<converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
 		<Style TargetType="{x:Type GridViewColumnHeader}" BasedOn="{StaticResource {x:Type GridViewColumnHeader}}">
 			<Setter Property="Template">
 				<Setter.Value>
@@ -104,6 +205,59 @@
 				</Setter.Value>
 			</Setter>
 		</Style>
+		<Storyboard x:Key="PlayingPulseAnimation" RepeatBehavior="Forever" AutoReverse="True">
+			<DoubleAnimation 
+        Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)" 
+        From="1.0" To="1.4" Duration="0:0:0.6"/>
+			<DoubleAnimation 
+        Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)" 
+        From="1.0" To="1.4" Duration="0:0:0.6"/>
+			<DoubleAnimation 
+        Storyboard.TargetProperty="Opacity" 
+        From="0.8" To="1.0" Duration="0:0:0.6"/>
+		</Storyboard>
+		<Style x:Key="PlayingIndicatorStyle" TargetType="Ellipse">
+			<Setter Property="Width" Value="14"/>
+			<Setter Property="Height" Value="14"/>
+			<Setter Property="Fill" Value="#32CD32"/>
+			<Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+			<Setter Property="RenderTransform">
+				<Setter.Value>
+					<ScaleTransform ScaleX="1" ScaleY="1"/>
+				</Setter.Value>
+			</Setter>
+
+			<Style.Triggers>
+				<DataTrigger Binding="{Binding IsPlaying}" Value="True">
+					<Setter Property="Visibility" Value="Visible"/>
+					<DataTrigger.EnterActions>
+						<BeginStoryboard Storyboard="{StaticResource PlayingPulseAnimation}"/>
+					</DataTrigger.EnterActions>
+					<DataTrigger.ExitActions>
+						<BeginStoryboard>
+							<Storyboard>
+								<DoubleAnimation 
+                            Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)" 
+                            To="1.0" Duration="0:0:0.2"/>
+								<DoubleAnimation 
+                            Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)" 
+                            To="1.0" Duration="0:0:0.2"/>
+								<DoubleAnimation 
+                            Storyboard.TargetProperty="Opacity" 
+                            To="0.8" Duration="0:0:0.2"/>
+							</Storyboard>
+						</BeginStoryboard>
+					</DataTrigger.ExitActions>
+				</DataTrigger>
+
+				<DataTrigger Binding="{Binding IsPlaying}" Value="False">
+					<Setter Property="Visibility" Value="Collapsed"/>
+				</DataTrigger>
+				<EventTrigger RoutedEvent="Loaded">
+					<BeginStoryboard Storyboard="{StaticResource PlayingPulseAnimation}"/>
+				</EventTrigger>
+			</Style.Triggers>
+		</Style>
 		<CollectionViewSource x:Key="PlaylistsViewSource" Source="{Binding Playlists}">
 			<CollectionViewSource.SortDescriptions>
 				<componentModel:SortDescription PropertyName="Name" Direction="Ascending" />
@@ -124,244 +278,486 @@
 			<RowDefinition Height="80" />
 		</Grid.RowDefinitions>
 
-		<Grid Grid.Row="0" Grid.ColumnSpan="2" Background="#1E1E1E">
-			<Grid.RowDefinitions>
-				<RowDefinition Height="Auto" />
-				<RowDefinition Height="Auto" />
-			</Grid.RowDefinitions>
-			<TextBlock Grid.Row="0" Text="Сейчас играет" Foreground="White" FontWeight="Bold" 
-                       FontSize="18" Margin="10,5" HorizontalAlignment="Left" />
-			<TextBlock Grid.Row="0" Text="Справка" Foreground="White" FontWeight="Bold" 
-           FontSize="18" Margin="10,7,50,0" HorizontalAlignment="Right" Cursor="" />
-			<Button x:Name="HelpButton" Grid.Row="0" Width="60" Height="35" Margin="2" HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" BorderBrush="{x:Null}" Click="HelpButton_Click" ToolTip="О программе">
-				<materialDesign:PackIcon Kind="InformationOutline" Width="26" Height="26" Foreground="LightSkyBlue"/>
-			</Button>
-			<Grid Grid.Row="1">
+		<Grid Grid.Row="0" Grid.ColumnSpan="2" Background="#1E1E1E" MinHeight="80">
+			<Grid.Effect>
+				<BlurEffect Radius="1" KernelType="Gaussian"/>
+			</Grid.Effect>
+
+			<!-- Главная строка -->
+			<Grid Margin="16,8" IsSharedSizeScope="True">
 				<Grid.ColumnDefinitions>
-					<ColumnDefinition Width="Auto" />
-					<ColumnDefinition Width="*" />
-					<ColumnDefinition Width="Auto" />
+					<ColumnDefinition Width="Auto" SharedSizeGroup="NowPlayingColumn"/>
+					<!-- Лево: Сейчас играет -->
+					<ColumnDefinition Width="*"/>
+					<!-- Центр: Поиск -->
+					<ColumnDefinition Width="Auto"/>
+					<!-- Право: Кнопки -->
 				</Grid.ColumnDefinitions>
-				<StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,5,0,5" VerticalAlignment="Center">
-					<Image Source="{Binding PlayerService.CurrentSong.CoverImage, FallbackValue={x:Null}}" 
-                           Width="100" Height="100" Stretch="UniformToFill" Margin="0,0,10,0"/>
-					<StackPanel Orientation="Vertical">
-						<TextBlock Text="{Binding PlayerService.CurrentSong.Title, TargetNullValue='Unknown Title'}" 
-                                   Foreground="White" FontWeight="Bold" FontSize="28"/>
-						<TextBlock Text="{Binding PlayerService.CurrentSong.Artist.Name, TargetNullValue='Unknown Artist'}" 
-                                   Foreground="LimeGreen" FontSize="19" FontWeight="SemiBold" Cursor=""/>
-						<TextBlock Text="{Binding PlayerService.CurrentSong.Album.Title, TargetNullValue='Unknown Album'}" 
-                                   Foreground="LimeGreen" FontSize="17"/>
-					</StackPanel>
-				</StackPanel>
-				<Grid Grid.Column="1" VerticalAlignment="Center">
+
+				<!-- === ЛЕВЫЙ БЛОК: Сейчас играет === -->
+				<Grid x:Name="NowPlayingPanel" Grid.Column="0" MinWidth="240" MaxWidth="660" VerticalAlignment="Center">
 					<Grid.ColumnDefinitions>
-						<ColumnDefinition Width="*" />
+						<ColumnDefinition Width="Auto"/>
+						<ColumnDefinition Width="*"/>
 					</Grid.ColumnDefinitions>
 
-					<DockPanel HorizontalAlignment="Center" VerticalAlignment="Center" LastChildFill="False">
-						<TextBox x:Name="SearchBox"
-                 Width="400"
-                 Height="46"
-                 FontSize="18"
-                 Padding="10,2,10,2"
-                 Background="#222"
-                 BorderBrush="#444"
-                 BorderThickness="1"
-                 Foreground="White"
-                 VerticalAlignment="Center"
-                 materialDesign:HintAssist.Hint="Поиск трека, исполнителя или альбома..."
-                 TextChanged="SearchBox_TextChanged"
-                 KeyDown="SearchBox_KeyDown"
-                 GotFocus="SearchBox_GotFocus"/>
-
-						<StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
-							<materialDesign:PackIcon Kind="Album"
-                                     Width="27" Height="27"
-                                     Foreground="#CCCCCC"
-                                     VerticalAlignment="Center"
-                                     Opacity="0.8"/>
-							<TextBlock x:Name="MusicContextText"
-                       Text="Вся музыка"
-                       FontSize="26"
-                       FontWeight="SemiBold"
-                       Foreground="#DDDDDD"
-                       VerticalAlignment="Center"
-                       Margin="6,0,0,0"
-                       Opacity="0.9"
-                       TextTrimming="CharacterEllipsis"/>
-						</StackPanel>
-					</DockPanel>
-				</Grid>
-
-				<Popup x:Name="SuggestionsPopup"
-           PlacementTarget="{Binding ElementName=SearchBox}"
-           Placement="Bottom"
-           AllowsTransparency="True"
-           StaysOpen="False"
-           Focusable="False">
-					<Border Background="#1E1E1E"
-                BorderBrush="#444"
-                BorderThickness="1"
-                CornerRadius="8"
-                Padding="4"
-                SnapsToDevicePixels="True"
-                Width="{Binding ActualWidth, ElementName=SearchBox}">
-						<ScrollViewer MaxHeight="220"
-                          VerticalScrollBarVisibility="Auto">
-							<ListBox x:Name="SuggestionsList"
-                         Background="Transparent"
-                         BorderThickness="0"
-                         Foreground="White"
-                         FontSize="16"
-                         MouseLeftButtonUp="SuggestionsList_MouseLeftButtonUp" PreviewMouseWheel="SuggestionsList_PreviewMouseWheel">
-
-								<ListBox.ItemTemplate>
-									<DataTemplate>
-										<Grid Margin="6">
-											<Grid.ColumnDefinitions>
-												<ColumnDefinition Width="Auto"/>
-												<ColumnDefinition Width="*"/>
-											</Grid.ColumnDefinitions>
-
-											<materialDesign:PackIcon Kind="MusicNote"
-                                                         Width="24" Height="24"
-                                                         Foreground="LightSkyBlue"
-                                                         VerticalAlignment="Center"
-                                                         Margin="0,0,10,0"/>
-
-											<StackPanel Grid.Column="1" VerticalAlignment="Center">
-												<TextBlock Text="{Binding Title}"
-                                               FontWeight="Bold"
-                                               Foreground="White"
-                                               FontSize="16"/>
-												<TextBlock Text="{Binding Artist.Name}"
-                                               Foreground="#AAAAAA"
-                                               FontSize="14"/>
-											</StackPanel>
-										</Grid>
-									</DataTemplate>
-								</ListBox.ItemTemplate>
-
-								<ListBox.ItemContainerStyle>
-									<Style TargetType="ListBoxItem">
-										<Setter Property="Padding" Value="4"/>
-										<Setter Property="Cursor" Value="Hand"/>
-										<Setter Property="Template">
-											<Setter.Value>
-												<ControlTemplate TargetType="ListBoxItem">
-													<Border x:Name="border"
-                                                Background="Transparent"
-                                                CornerRadius="6"
-                                                Padding="{TemplateBinding Padding}">
-														<ContentPresenter/>
-													</Border>
-													<ControlTemplate.Triggers>
-														<Trigger Property="IsMouseOver" Value="True">
-															<Setter TargetName="border" Property="Background" Value="#333"/>
-														</Trigger>
-														<Trigger Property="IsSelected" Value="True">
-															<Setter TargetName="border" Property="Background" Value="#444"/>
-														</Trigger>
-													</ControlTemplate.Triggers>
-												</ControlTemplate>
-											</Setter.Value>
-										</Setter>
-									</Style>
-								</ListBox.ItemContainerStyle>
-							</ListBox>
-						</ScrollViewer>
+					<!-- Обложка с пульсацией -->
+					<Border Grid.Column="0" Width="102" Height="102" CornerRadius="6" Margin="0,0,12,0"
+                    Background="#333" ClipToBounds="True" >
+						<Image Source="{Binding PlayerService.CurrentSong.CoverImage}"
+                       Stretch="UniformToFill"/>
+						<Border.Style>
+							<Style TargetType="Border">
+								<Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+								<Setter Property="RenderTransform">
+									<Setter.Value>
+										<ScaleTransform ScaleX="1" ScaleY="1"/>
+									</Setter.Value>
+								</Setter>
+								<Style.Triggers>
+									<DataTrigger Binding="{Binding PlayerService.IsPlaying}" Value="True">
+										<DataTrigger.EnterActions>
+											<BeginStoryboard x:Name="PulseStoryboard">
+												<Storyboard RepeatBehavior="Forever" AutoReverse="True">
+													<DoubleAnimation 
+                    Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)"
+                    From="1.0" To="1.1" Duration="0:0:1.1"/>
+													<DoubleAnimation 
+                    Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)"
+                    From="1.0" To="1.1" Duration="0:0:1.1"/>
+												</Storyboard>
+											</BeginStoryboard>
+										</DataTrigger.EnterActions>
+										<DataTrigger.ExitActions>
+											<StopStoryboard BeginStoryboardName="PulseStoryboard"/>
+											<!-- Возврат к исходному масштабу (опционально) -->
+											<BeginStoryboard>
+												<Storyboard>
+													<DoubleAnimation 
+                    Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)"
+                    To="1.0" Duration="0:0:0.2"/>
+													<DoubleAnimation 
+                    Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)"
+                    To="1.0" Duration="0:0:0.2"/>
+												</Storyboard>
+											</BeginStoryboard>
+										</DataTrigger.ExitActions>
+									</DataTrigger>
+								</Style.Triggers>
+							</Style>
+						</Border.Style>
 					</Border>
-				</Popup>
-				<StackPanel Grid.Column="2" Orientation="Vertical"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Top"
-                Margin="0,5,10,0">
-					<Button x:Name="ProfileButton"
-            Margin="100,0,0,10"
-            Width="180"
-            Height="40"
-            Background="#222"
-            Foreground="White"
-            BorderBrush="#444"
-            BorderThickness="1"
-            Click="ProfileButton_Click">
-						<StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-							<materialDesign:PackIcon Kind="AccountCircle" Width="26" Height="26" Foreground="Lime"/>
-							<TextBlock Text="Профиль" Margin="6,0,0,0" FontSize="20" VerticalAlignment="Center" FontWeight="Bold"/>
-						</StackPanel>
-					</Button>
-					<Button Grid.Column="2" x:Name="ChangeGenreButton" Margin="0,0,0,20"
-        Style="{StaticResource GenreButtonStyle}"
-        Click="ChangeGenreButton_Click">
-						<Button.Content>
-							<StackPanel Orientation="Horizontal" Cursor="">
-								<materialDesign:PackIcon Kind="Music" Width="26" Height="26" Margin="0,0,6,0" Foreground="Lime"/>
-								<TextBlock Text="Изменить жанр" FontSize="20" FontWeight="Bold"/>
-							</StackPanel>
-						</Button.Content>
-					</Button>
-				</StackPanel>
-			</Grid>
-		</Grid>
 
-		<StackPanel Grid.Column="0" Grid.Row="1" Background="#121212">
-			<Button Content="Home" FontSize="20" Click="HomeButton_Click" Height="34" Margin="5,5,5,5" Command="{Binding HomeCommand}"/>
-			<TextBlock Text="Плейлисты" Foreground="White" FontSize="20"
-               FontWeight="Bold" Margin="10,10,0,10"/>
-			<ListBox x:Name="PlaylistsListBox"
-         MouseDoubleClick="PlaylistsListBox_MouseDoubleClick"
-         ItemsSource="{Binding Playlists}"
-         SelectedItem="{Binding SelectedPlaylist}"
-         SelectionChanged="Playlist_SelectionChanged"
-         Background="#121212"
-         Foreground="White"
-         BorderThickness="0">
+					<!-- Текст -->
+					<Grid Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+						<Grid.RowDefinitions>
+							<RowDefinition Height="Auto"/>
+							<RowDefinition Height="Auto"/>
+							<RowDefinition Height="Auto"/>
+						</Grid.RowDefinitions>
 
-				<ListBox.ItemTemplate>
-					<DataTemplate>
-						<TextBlock Text="{Binding Name}"
-                       FontSize="18"
-                       Padding="8"
-                       FontWeight="SemiBold">
+						<TextBlock Grid.Row="0" Text="Сейчас играет" Foreground="#AAAAAA" FontSize="14" FontWeight="Medium" Margin="0,-13,0,13"/>
+						<TextBlock Text="{Binding PlayerService.CurrentSong.Title, TargetNullValue='—'}"
+           Foreground="White"
+           FontWeight="SemiBold"
+           FontSize="26"
+           Margin="0,3,0,0"
+           TextWrapping="NoWrap"
+           HorizontalAlignment="Left"
+           TextTrimming="CharacterEllipsis">
+
 							<TextBlock.Style>
 								<Style TargetType="TextBlock">
-									<Setter Property="Foreground" Value="White"/>
+									<Setter Property="TextTrimming" Value="CharacterEllipsis"/>
 									<Style.Triggers>
-										<DataTrigger Binding="{Binding Name}" Value="Favorite">
-											<Setter Property="Foreground" Value="Lime"/>
+										<DataTrigger Binding="{Binding PlayerService.IsPlaying}" Value="True">
+											<DataTrigger.EnterActions>
+												<BeginStoryboard>
+													<Storyboard>
+														<DoubleAnimation Storyboard.TargetProperty="Opacity" To="1.0" Duration="0:0:0.4"/>
+														<DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(TranslateTransform.X)" To="0" Duration="0:0:0.4"/>
+													</Storyboard>
+												</BeginStoryboard>
+											</DataTrigger.EnterActions>
+											<DataTrigger.ExitActions>
+												<BeginStoryboard>
+													<Storyboard>
+														<DoubleAnimation Storyboard.TargetProperty="Opacity" To="0.6" Duration="0:0:0.4"/>
+														<DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(TranslateTransform.X)" To="5" Duration="0:0:0.4"/>
+													</Storyboard>
+												</BeginStoryboard>
+											</DataTrigger.ExitActions>
+										</DataTrigger>
+
+										<DataTrigger 
+                    Binding="{Binding ElementName=NowPlayingPanel, Path=ActualWidth, Converter={StaticResource WidthToBoolConverter}}" 
+                    Value="True">
+											<Setter Property="TextTrimming" Value="None"/>
 										</DataTrigger>
 									</Style.Triggers>
 								</Style>
 							</TextBlock.Style>
 						</TextBlock>
+
+						<TextBlock Grid.Row="2" 
+               Text="{Binding PlayerService.CurrentSong.Artist.Name, TargetNullValue='Неизвестный артист'}"
+               Foreground="#1DB954" FontSize="19" FontWeight="Medium"/>
+					</Grid>
+				</Grid>
+
+				<!-- === ЦЕНТР: Поиск === -->
+				<TextBox x:Name="SearchBox" Grid.Column="1"
+                 Width="Auto" Height="44" MaxWidth="500"
+                 FontSize="16" Padding="14,0"
+                 Background="#2A2A2A" Foreground="White"
+                 BorderBrush="#444" BorderThickness="1"
+                 VerticalAlignment="Center" HorizontalAlignment="Center"
+                 materialDesign:HintAssist.Hint="Поиск трека, исполнителя или альбома..."
+                 TextChanged="SearchBox_TextChanged"
+                 KeyDown="SearchBox_KeyDown"
+                 GotFocus="SearchBox_GotFocus">
+					<TextBox.Style>
+						<Style TargetType="TextBox" BasedOn="{StaticResource MaterialDesignTextBox}">
+							<Style.Triggers>
+								<Trigger Property="IsKeyboardFocused" Value="True">
+									<Setter Property="BorderBrush" Value="#1DB954"/>
+									<Setter Property="BorderThickness" Value="2"/>
+								</Trigger>
+							</Style.Triggers>
+						</Style>
+					</TextBox.Style>
+				</TextBox>
+
+				<!-- Контекст (Вся музыка) -->
+				<StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center"
+                    HorizontalAlignment="Center" Margin="0,0,0,48">
+					<materialDesign:PackIcon Kind="Album" Width="22" Height="22" Foreground="#888" Margin="0,4,6,0"/>
+					<TextBlock x:Name="MusicContextText" Margin="0,0,0,35" Text="Вся музыка"
+                       FontSize="20" FontWeight="SemiBold" Foreground="#DDDDDD"/>
+				</StackPanel>
+
+				<!-- === ПРАВЫЙ БЛОК: Кнопки === -->
+				<StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+
+					<!-- Кнопка: Изменить жанр -->
+					<Button x:Name="ChangeGenreButton"
+            Click="ChangeGenreButton_Click"
+            Cursor="Hand"
+            Background="#2A2A2A"
+            BorderBrush="#444"
+            BorderThickness="1"
+            Height="40"
+            Padding="14,0"
+            Margin="0,0,8,0">
+						<StackPanel Orientation="Horizontal">
+							<materialDesign:PackIcon Kind="Music" Foreground="#1DB954" Width="18" Height="18" VerticalAlignment="Center" Margin="0,0,8,0"/>
+							<TextBlock Text="Изменить жанр" Foreground="White" FontSize="14" VerticalAlignment="Center"/>
+						</StackPanel>
+						<Button.Style>
+							<Style TargetType="Button">
+								<Setter Property="Template">
+									<Setter.Value>
+										<ControlTemplate TargetType="Button">
+											<Border x:Name="border"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="6"
+                                    Padding="{TemplateBinding Padding}">
+												<ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+											</Border>
+											<ControlTemplate.Triggers>
+												<Trigger Property="IsMouseOver" Value="True">
+													<Setter TargetName="border" Property="Background" Value="#333333"/>
+													<Setter TargetName="border" Property="BorderBrush" Value="#1DB954"/>
+												</Trigger>
+												<Trigger Property="IsPressed" Value="True">
+													<Setter TargetName="border" Property="Background" Value="#444444"/>
+												</Trigger>
+											</ControlTemplate.Triggers>
+										</ControlTemplate>
+									</Setter.Value>
+								</Setter>
+							</Style>
+						</Button.Style>
+					</Button>
+
+					<!-- Кнопка: Профиль -->
+					<Button x:Name="ProfileButton"
+            Click="ProfileButton_Click"
+            Cursor="Hand"
+            Background="#2A2A2A"
+            BorderBrush="#444"
+            BorderThickness="1"
+            Height="40"
+            Padding="14,0"
+            MinWidth="110"
+            Margin="0,0,8,0">
+						<StackPanel Orientation="Horizontal">
+							<materialDesign:PackIcon Kind="AccountCircle" Foreground="#1DB954" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,8,0"/>
+							<TextBlock Text="Профиль" Foreground="White" FontSize="14" VerticalAlignment="Center"/>
+						</StackPanel>
+						<Button.Style>
+							<Style TargetType="Button">
+								<Setter Property="Template">
+									<Setter.Value>
+										<ControlTemplate TargetType="Button">
+											<Border x:Name="border"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="6"
+                                    Padding="{TemplateBinding Padding}">
+												<ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+											</Border>
+											<ControlTemplate.Triggers>
+												<Trigger Property="IsMouseOver" Value="True">
+													<Setter TargetName="border" Property="Background" Value="#333333"/>
+													<Setter TargetName="border" Property="BorderBrush" Value="#1DB954"/>
+												</Trigger>
+											</ControlTemplate.Triggers>
+										</ControlTemplate>
+									</Setter.Value>
+								</Setter>
+							</Style>
+						</Button.Style>
+					</Button>
+
+					<!-- Кнопка: Справка (только иконка) -->
+				</StackPanel>
+				<Button x:Name="HelpButton"
+            Click="HelpButton_Click"
+            ToolTip="О программе"
+            Cursor="Hand"
+            Background="Transparent"
+            BorderThickness="0"
+            Grid.Column="2" Margin="244,-1,10,77">
+					<Button.Style>
+						<Style TargetType="{x:Type Button}">
+							<Setter Property="Template">
+								<Setter.Value>
+									<ControlTemplate TargetType="{x:Type Button}">
+										<Border x:Name="border"
+                                    Background="{TemplateBinding Background}"
+                                    CornerRadius="6"
+                                    Padding="4">
+											<ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+										</Border>
+										<ControlTemplate.Triggers>
+											<Trigger Property="IsMouseOver" Value="True">
+												<Setter TargetName="border" Property="Background" Value="#333333"/>
+											</Trigger>
+										</ControlTemplate.Triggers>
+									</ControlTemplate>
+								</Setter.Value>
+							</Setter>
+						</Style>
+					</Button.Style>
+					<materialDesign:PackIcon Kind="InformationOutline" Foreground="#88C0D0" Width="20" Height="20"/>
+				</Button>
+			</Grid>
+
+			<!-- Popup с подсказками -->
+			<Popup x:Name="SuggestionsPopup" PlacementTarget="{Binding ElementName=SearchBox}"
+           Placement="Bottom" AllowsTransparency="True" StaysOpen="False" Focusable="False"
+           VerticalOffset="8">
+				<Border Background="#1E1E1E" BorderBrush="#444" BorderThickness="1" CornerRadius="8"
+                Padding="4" Width="{Binding ActualWidth, ElementName=SearchBox}">
+					<ScrollViewer MaxHeight="220" VerticalScrollBarVisibility="Auto">
+						<ListBox x:Name="SuggestionsList" Background="Transparent" BorderThickness="0"
+                         Foreground="White" FontSize="16"
+                         MouseLeftButtonUp="SuggestionsList_MouseLeftButtonUp"
+                         PreviewMouseWheel="SuggestionsList_PreviewMouseWheel">
+							<ListBox.ItemTemplate>
+								<DataTemplate>
+									<Grid Margin="6">
+										<Grid.ColumnDefinitions>
+											<ColumnDefinition Width="Auto"/>
+											<ColumnDefinition Width="*"/>
+										</Grid.ColumnDefinitions>
+										<materialDesign:PackIcon Kind="MusicNote" Width="24" Height="24"
+                                                         Foreground="#88C0D0" VerticalAlignment="Center" Margin="0,0,10,0"/>
+										<StackPanel Grid.Column="1" VerticalAlignment="Center">
+											<TextBlock Text="{Binding Title}" FontWeight="Bold" Foreground="White" FontSize="16"/>
+											<TextBlock Text="{Binding Artist.Name}" Foreground="#AAAAAA" FontSize="14"/>
+										</StackPanel>
+									</Grid>
+								</DataTemplate>
+							</ListBox.ItemTemplate>
+							<ListBox.ItemContainerStyle>
+								<Style TargetType="ListBoxItem">
+									<Setter Property="Padding" Value="4"/>
+									<Setter Property="Cursor" Value="Hand"/>
+									<Setter Property="Template">
+										<Setter.Value>
+											<ControlTemplate TargetType="ListBoxItem">
+												<Border x:Name="border" Background="Transparent" CornerRadius="6" Padding="{TemplateBinding Padding}">
+													<ContentPresenter/>
+												</Border>
+												<ControlTemplate.Triggers>
+													<Trigger Property="IsMouseOver" Value="True">
+														<Setter TargetName="border" Property="Background" Value="#333"/>
+													</Trigger>
+													<Trigger Property="IsSelected" Value="True">
+														<Setter TargetName="border" Property="Background" Value="#444"/>
+													</Trigger>
+												</ControlTemplate.Triggers>
+											</ControlTemplate>
+										</Setter.Value>
+									</Setter>
+								</Style>
+							</ListBox.ItemContainerStyle>
+						</ListBox>
+					</ScrollViewer>
+				</Border>
+			</Popup>
+		</Grid>
+
+		<StackPanel Grid.Column="0" Grid.Row="1" Background="#121212" Margin="0,5">
+			<Button Content="Home"
+            FontSize="18"
+            FontWeight="SemiBold"
+            Click="HomeButton_Click"
+            Height="44"
+            Margin="8,8"
+            Padding="16,0"
+			Command="{Binding HomeCommand}"
+            HorizontalContentAlignment="Left"
+            Background="#1E1E1E"
+            Foreground="White"
+            BorderThickness="0"
+            Cursor="Hand">
+				<Button.Style>
+					<Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+						<Setter Property="Template">
+							<Setter.Value>
+								<ControlTemplate TargetType="Button">
+									<Border x:Name="border"
+                                    Background="{TemplateBinding Background}"
+                                    CornerRadius="8"
+                                    Padding="{TemplateBinding Padding}">
+										<ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/>
+									</Border>
+									<ControlTemplate.Triggers>
+										<Trigger Property="IsMouseOver" Value="True">
+											<Setter TargetName="border" Property="Background" Value="#2A2A2A"/>
+										</Trigger>
+										<Trigger Property="IsPressed" Value="True">
+											<Setter TargetName="border" Property="Background" Value="#333333"/>
+										</Trigger>
+									</ControlTemplate.Triggers>
+								</ControlTemplate>
+							</Setter.Value>
+						</Setter>
+					</Style>
+				</Button.Style>
+			</Button>
+
+			<!-- Заголовок "Плейлисты" -->
+			<TextBlock Text="Плейлисты"
+               Foreground="#BBBBBB"
+               FontSize="16"
+               FontWeight="Bold"
+               Margin="16,16,0,12"/>
+
+			<!-- Список плейлистов -->
+			<ListBox x:Name="PlaylistsListBox"
+             MouseDoubleClick="PlaylistsListBox_MouseDoubleClick"
+             ItemsSource="{Binding Playlists}"
+             SelectedItem="{Binding SelectedPlaylist}"
+             SelectionChanged="Playlist_SelectionChanged"
+             Background="Transparent"
+             BorderThickness="0"
+             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+             Padding="0">
+
+				<ListBox.ItemContainerStyle>
+					<Style TargetType="ListBoxItem">
+						<Setter Property="Background" Value="Transparent"/>
+						<Setter Property="Margin" Value="4,2"/>
+						<Setter Property="Template">
+							<Setter.Value>
+								<ControlTemplate TargetType="ListBoxItem">
+									<Border x:Name="itemBorder"
+                                    Background="{TemplateBinding Background}"
+                                    CornerRadius="6"
+                                    Padding="12,8"
+                                    Margin="4,2"
+                                    Cursor="Hand">
+										<ContentPresenter />
+									</Border>
+									<ControlTemplate.Triggers>
+										<Trigger Property="IsMouseOver" Value="True">
+											<Setter TargetName="itemBorder" Property="Background" Value="#222222"/>
+										</Trigger>
+										<Trigger Property="IsSelected" Value="True">
+											<Setter TargetName="itemBorder" Property="Background" Value="#2A2A2A"/>
+											<Setter Property="Foreground" Value="White"/>
+										</Trigger>
+									</ControlTemplate.Triggers>
+								</ControlTemplate>
+							</Setter.Value>
+						</Setter>
+					</Style>
+				</ListBox.ItemContainerStyle>
+
+				<ListBox.ItemTemplate>
+					<DataTemplate>
+						<StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+							<!-- Иконка для избранного -->
+							<materialDesign:PackIcon Kind="Heart"
+                                             Width="18"
+                                             Height="18"
+                                             Foreground="Lime"
+                                             Margin="0,0,10,0"
+                                             Visibility="{Binding Name, Converter={StaticResource FavoriteVisibilityConverter}}"/>
+							<!-- Иконка для обычных плейлистов -->
+							<materialDesign:PackIcon Kind="PlaylistMusic"
+                                             Width="18"
+                                             Height="18"
+                                             Foreground="#888888"
+                                             Margin="0,0,10,0"
+                                             Visibility="{Binding Name, Converter={StaticResource RegularPlaylistVisibilityConverter}}"/>
+
+							<TextBlock Text="{Binding Name}"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               Foreground="White"/>
+						</StackPanel>
 					</DataTemplate>
 				</ListBox.ItemTemplate>
 
 				<ListBox.ContextMenu>
 					<ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
 						<MenuItem Header="Удалить плейлист"
-                      Command="{Binding DeletePlaylistCommand}"
-                      CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                          Command="{Binding DeletePlaylistCommand}"
+                          CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
 					</ContextMenu>
 				</ListBox.ContextMenu>
 			</ListBox>
 		</StackPanel>
-		
+
 
 		<Grid Grid.Column="1" Grid.Row="1">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="333*"/>
+				<ColumnDefinition Width="17*"/>
+			</Grid.ColumnDefinitions>
 
 			<Border x:Name="SongInfoPanel"
         Background="#1E1E1E"
         Height="200"
         Padding="20"
-        Margin="0,10,0,0"
+        Margin="50,10,0,0"
         Visibility="Collapsed"
         HorizontalAlignment="Center"
         VerticalAlignment="Top"
         Width="600"
         CornerRadius="10"
-        Panel.ZIndex="10">
+        Panel.ZIndex="10"
+		BorderThickness="3"
+        BorderBrush="#1DB954"
+        Opacity="0.95">
 				<Border.RenderTransform>
 					<TranslateTransform Y="-200"/>
 				</Border.RenderTransform>
@@ -432,19 +828,62 @@
 
 			<ListView x:Name="SongsListView"
           ItemsSource="{Binding Songs}"
-          SelectedItem="{Binding SelectedSong, Mode=TwoWay}"
-          Margin="10"
+          SelectedItem="{Binding SelectedSong}"
+          Margin="10,10,10,10"
           Background="#121212"
           Foreground="White"
-          HorizontalAlignment="Stretch"
-          VerticalAlignment="Stretch"
           FontSize="18"
           MouseDoubleClick="SongsListView_MouseDoubleClick"
           VirtualizingPanel.IsVirtualizing="True"
           VirtualizingPanel.VirtualizationMode="Recycling"
           ScrollViewer.CanContentScroll="True"
           BorderThickness="0"
-          Padding="4" Cursor="">
+          Padding="4" Cursor="" Grid.ColumnSpan="2">
+
+				<ListView.Resources>
+					<!-- ScrollBar — всегда виден, без стрелок -->
+					<Style TargetType="ScrollBar">
+						<Setter Property="Background" Value="MediumPurple"/>
+						<Setter Property="Opacity" Value="0.8"/>
+						<!-- Всегда видимый -->
+						<Setter Property="Stylus.IsFlicksEnabled" Value="False"/>
+						<Setter Property="Template">
+							<Setter.Value>
+								<ControlTemplate TargetType="ScrollBar">
+									<Grid Background="{TemplateBinding Background}">
+										<Track x:Name="PART_Track" 
+											   Orientation="{TemplateBinding Orientation}"
+											   IsDirectionReversed="True">
+											<Track.Thumb>
+												<Thumb />
+											</Track.Thumb>
+										</Track>
+									</Grid>
+								</ControlTemplate>
+							</Setter.Value>
+						</Setter>
+					</Style>
+
+					<!-- Thumb — фиолетовый фон -->
+					<Style TargetType="Thumb">
+						<Setter Property="Background" Value="White"/>
+						<Setter Property="Opacity" Value="0.9"/>
+						<Setter Property="Template">
+							<Setter.Value>
+								<ControlTemplate TargetType="Thumb">
+									<Border Background="{TemplateBinding Background}"
+                            CornerRadius="4"
+                            Margin="4,2"/>
+								</ControlTemplate>
+							</Setter.Value>
+						</Setter>
+						<Style.Triggers>
+							<Trigger Property="IsMouseOver" Value="True">
+								<Setter Property="Opacity" Value="1.0"/>
+							</Trigger>
+						</Style.Triggers>
+					</Style>
+				</ListView.Resources>
 
 				<!-- Панель для виртуализации -->
 				<ListView.ItemsPanel>
@@ -453,121 +892,246 @@
 					</ItemsPanelTemplate>
 				</ListView.ItemsPanel>
 
-				<!-- Шаблон отображения каждой песни -->
 				<ListView.ItemTemplate>
 					<DataTemplate>
-						<Border Background="#1A1A1A"
-                    CornerRadius="8"
-                    Padding="8"
-                    Margin="17,3"
-                    SnapsToDevicePixels="True">
-							<Grid>
+						<Border Background="#1C1C1C"
+                CornerRadius="10"
+                Padding="12"
+                Margin="26,6"
+                SnapsToDevicePixels="True"
+                Effect="{DynamicResource DropShadowEffect}">
+							<Grid Cursor="">
 								<Grid.ColumnDefinitions>
-									<ColumnDefinition Width="60"/>
+									<ColumnDefinition Width="70"/>
 									<ColumnDefinition Width="*"/>
 									<ColumnDefinition Width="Auto"/>
 									<ColumnDefinition Width="Auto"/>
 								</Grid.ColumnDefinitions>
 
 								<!-- Обложка -->
-								<Image Source="{Binding CoverImage}"
-                           Width="50" Height="50"
-                           Stretch="UniformToFill"
-                           Margin="0,0,8,0"
-                           VerticalAlignment="Center"/>
+								<Border Width="60" Height="60" 
+        CornerRadius="8"
+        ClipToBounds="True"
+        Background="#222"
+        Margin="0,0,10,0"
+        VerticalAlignment="Center">
+									<Image Source="{Binding CoverImage}"
+           Stretch="UniformToFill"
+           SnapsToDevicePixels="True"/>
+								</Border>
 
-								<!-- Название, артист, индикатор IsPlaying -->
 								<StackPanel Grid.Column="1" VerticalAlignment="Center">
-									<StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-										<materialDesign:PackIcon Kind="Equalizer"
-                                                     Width="18" Height="18"
-                                                     Foreground="Lime"
-                                                     VerticalAlignment="Center"
-                                                     Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                     Margin="0,0,4,0"/>
-										<TextBlock Text="{Binding Title}"
-                                       FontWeight="Bold"
-                                       Foreground="White"
-                                       FontSize="18"
-                                       TextTrimming="CharacterEllipsis"/>
+									<StackPanel Orientation="Horizontal" Margin="0,0,8,0" 
+            Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibilityConverter}}"
+												RenderTransformOrigin="0.5,0.5">
+										<Rectangle Width="3" Height="10" Fill="#32CD32" Margin="1,0">
+											<Rectangle.RenderTransform>
+												<ScaleTransform ScaleY="1"/>
+											</Rectangle.RenderTransform>
+											<Rectangle.Triggers>
+												<EventTrigger RoutedEvent="Loaded">
+													<BeginStoryboard>
+														<Storyboard RepeatBehavior="Forever">
+															<DoubleAnimation 
+                            Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)"
+                            From="0.3" To="1.0" Duration="0:0:0.3"
+                            BeginTime="0:0:0.1" AutoReverse="True"/>
+														</Storyboard>
+													</BeginStoryboard>
+												</EventTrigger>
+											</Rectangle.Triggers>
+										</Rectangle>
+										<Rectangle Width="3" Height="10" Fill="#32CD32" Margin="1,0">
+											<Rectangle.RenderTransform>
+												<ScaleTransform ScaleY="1"/>
+											</Rectangle.RenderTransform>
+											<Rectangle.Triggers>
+												<EventTrigger RoutedEvent="Loaded">
+													<BeginStoryboard>
+														<Storyboard RepeatBehavior="Forever">
+															<DoubleAnimation 
+                            Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)"
+                            From="0.3" To="1.0" Duration="0:0:0.3"
+                            BeginTime="0:0:0.2" AutoReverse="True"/>
+														</Storyboard>
+													</BeginStoryboard>
+												</EventTrigger>
+											</Rectangle.Triggers>
+										</Rectangle>
+										<Rectangle Width="3" Height="10" Fill="#32CD32" Margin="1,0">
+											<Rectangle.RenderTransform>
+												<ScaleTransform ScaleY="1"/>
+											</Rectangle.RenderTransform>
+											<Rectangle.Triggers>
+												<EventTrigger RoutedEvent="Loaded">
+													<BeginStoryboard>
+														<Storyboard RepeatBehavior="Forever">
+															<DoubleAnimation 
+                            Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)"
+                            From="0.3" To="1.0" Duration="0:0:0.3"
+                            BeginTime="0:0:0.0" AutoReverse="True"/>
+														</Storyboard>
+													</BeginStoryboard>
+												</EventTrigger>
+											</Rectangle.Triggers>
+										</Rectangle>
 									</StackPanel>
+									<StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+										<TextBlock Text="{Binding Title}"
+                   FontWeight="Bold"
+                   Foreground="White"
+                   FontSize="26"
+                   TextTrimming="CharacterEllipsis"/>
+									</StackPanel>
+
 									<TextBlock Text="{Binding Artist.Name}"
-                                   FontSize="14"
-                                   Foreground="#AAAAAA"
-                                   TextTrimming="CharacterEllipsis"/>
+               FontSize="19"
+               Foreground="#B0B0B0"
+               TextTrimming="CharacterEllipsis"/>
 								</StackPanel>
 
-								<!-- Длительность -->
 								<TextBlock Grid.Column="2"
-                               Text="{Binding Duration, StringFormat={}{0:mm\\:ss}}"
-                               VerticalAlignment="Center"
-                               Foreground="#BBBBBB"
-                               Margin="8,0"/>
+                           Text="{Binding Duration, StringFormat={}{0:mm\\:ss}}"
+                           VerticalAlignment="Center"
+                           Foreground="#CCCCCC"
+                           FontSize="19"
+                           Margin="12,0"/>
 
-								<!-- Избранное -->
 								<Button Grid.Column="3"
-                            Style="{StaticResource FavoriteStarButton}"
-                            Click="FavoriteButton_Click"
-                            DataContext="{Binding}"
-                            ToolTip="Добавить в избранное"/>
+        Click="FavoriteButton_Click"
+        DataContext="{Binding}"
+        ToolTip="{Binding IsFavoriteLocal, Converter={StaticResource FavoriteTooltipConverter}}"
+        Width="44" Height="44"
+        Background="Transparent"
+        BorderThickness="0"
+        Cursor="Hand"
+        Focusable="False"
+        Padding="0">
+									<Button.Template>
+										<ControlTemplate TargetType="Button">
+											<Grid x:Name="ScaleContainer"
+                  RenderTransformOrigin="0.5,0.5">
+												<Grid.RenderTransform>
+													<ScaleTransform ScaleX="1" ScaleY="1"/>
+												</Grid.RenderTransform>
+
+												<materialDesign:PackIcon x:Name="Icon"
+                                         Width="34" Height="34"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"
+                                         Kind="{Binding IsFavoriteLocal, Converter={StaticResource FavoriteIconConverter}}"
+                                         Foreground="{Binding IsFavoriteLocal, Converter={StaticResource FavoriteColorConverter}}"/>
+											</Grid>
+
+											<ControlTemplate.Triggers>
+												<!-- Наведение -->
+												<Trigger Property="IsMouseOver" Value="True">
+													<Trigger.EnterActions>
+														<BeginStoryboard>
+															<Storyboard>
+																<DoubleAnimation Storyboard.TargetName="ScaleContainer"
+                                                 Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)"
+                                                 To="1.15"
+                                                 Duration="0:0:0.08"/>
+																<DoubleAnimation Storyboard.TargetName="ScaleContainer"
+                                                 Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)"
+                                                 To="1.15"
+                                                 Duration="0:0:0.08"/>
+															</Storyboard>
+														</BeginStoryboard>
+													</Trigger.EnterActions>
+													<Trigger.ExitActions>
+														<BeginStoryboard>
+															<Storyboard>
+																<DoubleAnimation Storyboard.TargetName="ScaleContainer"
+                                                 Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)"
+                                                 To="1"
+                                                 Duration="0:0:0.08"/>
+																<DoubleAnimation Storyboard.TargetName="ScaleContainer"
+                                                 Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)"
+                                                 To="1"
+                                                 Duration="0:0:0.08"/>
+															</Storyboard>
+														</BeginStoryboard>
+													</Trigger.ExitActions>
+												</Trigger>
+
+												<!-- Нажатие -->
+												<Trigger Property="IsPressed" Value="True">
+													<Trigger.EnterActions>
+														<BeginStoryboard>
+															<Storyboard>
+																<DoubleAnimation Storyboard.TargetName="ScaleContainer"
+                                                 Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)"
+                                                 To="0.9"
+                                                 Duration="0:0:0.05"/>
+																<DoubleAnimation Storyboard.TargetName="ScaleContainer"
+                                                 Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)"
+                                                 To="0.9"
+                                                 Duration="0:0:0.05"/>
+															</Storyboard>
+														</BeginStoryboard>
+													</Trigger.EnterActions>
+													<Trigger.ExitActions>
+														<BeginStoryboard>
+															<Storyboard>
+																<DoubleAnimation Storyboard.TargetName="ScaleContainer"
+                                                 Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)"
+                                                 To="1"
+                                                 Duration="0:0:0.07"/>
+																<DoubleAnimation Storyboard.TargetName="ScaleContainer"
+                                                 Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)"
+                                                 To="1"
+                                                 Duration="0:0:0.07"/>
+															</Storyboard>
+														</BeginStoryboard>
+													</Trigger.ExitActions>
+												</Trigger>
+											</ControlTemplate.Triggers>
+										</ControlTemplate>
+									</Button.Template>
+								</Button>
 							</Grid>
 						</Border>
 					</DataTemplate>
 				</ListView.ItemTemplate>
 
-				<!-- Стиль контейнера для эффектов выбора и hover -->
 				<ListView.ItemContainerStyle>
 					<Style TargetType="ListViewItem">
-						<Setter Property="Background" Value="Transparent"/>
+						<Setter Property="Padding" Value="8,4"/>
+						<Setter Property="Margin" Value="2"/>
+						<Setter Property="Background" Value="#1E1E1E"/>
+						<Setter Property="Foreground" Value="WhiteSmoke"/>
 						<Setter Property="BorderThickness" Value="0"/>
-						<Setter Property="Padding" Value="0"/>
+						<Setter Property="BorderBrush" Value="Transparent"/>
+						<Setter Property="Cursor" Value="Hand"/>
 						<Setter Property="SnapsToDevicePixels" Value="True"/>
-						<Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
-						<Setter Property="RenderTransform">
+						<Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+						<Setter Property="VerticalContentAlignment" Value="Center"/>
+						<Setter Property="Template">
 							<Setter.Value>
-								<ScaleTransform ScaleX="1" ScaleY="1"/>
+								<ControlTemplate TargetType="ListViewItem">
+									<Border x:Name="Bg"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="6"
+                            SnapsToDevicePixels="True">
+										<Grid>
+											<ContentPresenter/>
+										</Grid>
+									</Border>
+									<ControlTemplate.Triggers>
+										<Trigger Property="IsMouseOver" Value="True">
+											<Setter TargetName="Bg" Property="Background" Value="#2A2A2A"/>
+										</Trigger>
+										<Trigger Property="IsSelected" Value="True">
+											<Setter TargetName="Bg" Property="Background" Value="#3B3B3B"/>
+											<Setter TargetName="Bg" Property="BorderBrush" Value="#6C63FF"/>
+											<Setter TargetName="Bg" Property="BorderThickness" Value="1"/>
+										</Trigger>
+									</ControlTemplate.Triggers>
+								</ControlTemplate>
 							</Setter.Value>
 						</Setter>
-
-						<Style.Triggers>
-							<!-- Hover -->
-							<Trigger Property="IsMouseOver" Value="True">
-								<Setter Property="Background" Value="#222"/>
-								<Trigger.EnterActions>
-									<BeginStoryboard>
-										<Storyboard>
-											<DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)"
-                                                 To="1.02" Duration="0:0:0.15"/>
-											<DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)"
-                                                 To="1.02" Duration="0:0:0.15"/>
-										</Storyboard>
-									</BeginStoryboard>
-								</Trigger.EnterActions>
-								<Trigger.ExitActions>
-									<BeginStoryboard>
-										<Storyboard>
-											<DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)"
-                                                 To="1" Duration="0:0:0.15"/>
-											<DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)"
-                                                 To="1" Duration="0:0:0.15"/>
-										</Storyboard>
-									</BeginStoryboard>
-								</Trigger.ExitActions>
-							</Trigger>
-
-							<!-- Selected -->
-							<Trigger Property="IsSelected" Value="True">
-								<Setter Property="Background" Value="#224422"/>
-								<Setter Property="FontWeight" Value="Bold"/>
-							</Trigger>
-
-							<!-- Playing song highlight -->
-							<DataTrigger Binding="{Binding IsPlaying}" Value="True">
-								<Setter Property="Background" Value="#335522"/>
-								<Setter Property="Foreground" Value="Lime"/>
-								<Setter Property="FontWeight" Value="Bold"/>
-							</DataTrigger>
-						</Style.Triggers>
 					</Style>
 				</ListView.ItemContainerStyle>
 
@@ -608,101 +1172,159 @@
 			</ListView>
 		</Grid>
 
-		<Grid Grid.Row="2" Grid.ColumnSpan="2" Background="#181818">
-			<Grid>
+		<!--НИЖНИЙ БЛОК-->
+		<Grid Grid.Row="2" Grid.ColumnSpan="2" Background="#181818" Height="80">
+			<Grid Margin="16,0">
 				<Grid.ColumnDefinitions>
-					<ColumnDefinition Width="Auto" />
-					<ColumnDefinition Width="*" />
-					<ColumnDefinition Width="Auto" />
+					<ColumnDefinition Width="Auto"/>
+					<ColumnDefinition Width="*"/>
+					<ColumnDefinition Width="Auto"/>
 				</Grid.ColumnDefinitions>
 
+				<!-- Центр: Управление воспроизведением -->
 				<StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Cursor="">
+
+					<!-- Кнопки управления -->
 					<Button x:Name="RepeatModeButton"
-        Width="60"
-        Height="40"
-        Background="Transparent"
-        BorderBrush="{x:Null}"
-        Click="RepeatButton_Click"
-        ToolTip="Режим повтора">
+                    Width="49" Height="44"
+                    Background="Transparent" BorderThickness="0"
+                    Click="RepeatButton_Click"
+                    ToolTip="Режим повтора" Cursor="Hand">
 						<materialDesign:PackIcon x:Name="RepeatIcon"
-                             Kind="Repeat"
-                             Foreground="White"
-                             Width="28"
-                             Height="28"/>
+                         Kind="{Binding PlayerService.RepeatModeState, Converter={StaticResource RepeatModeToIconConverter}}"
+                         Foreground="{Binding PlayerService.RepeatModeState, Converter={StaticResource RepeatModeToColorConverter}}"
+                         Width="20" Height="20"/>
 					</Button>
-					<Button Command="{Binding PreviousCommand}" Margin="5">
-						<materialDesign:PackIcon Kind="SkipPrevious" Width="24" Height="24" Foreground="White" />
+
+					<Button Command="{Binding PreviousCommand}" 
+                    Width="49" Height="44"
+                    Background="Transparent" BorderThickness="0"
+                    Margin="14,0">
+						<materialDesign:PackIcon Kind="SkipPrevious" 
+                                         Foreground="White" 
+                                         Width="24" Height="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
 					</Button>
-					<Button Command="{Binding TogglePlayPauseCommand}" Margin="5">
+
+					<Button Command="{Binding TogglePlayPauseCommand}" 
+                    Width="48" Height="48"
+                    Background="White" 
+                    BorderThickness="0"
+                    Margin="0,0,12,0"
+					Cursor="Hand">
 						<Button.Style>
-							<Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-								<Setter Property="Content">
+							<Style TargetType="Button">
+								<Setter Property="Foreground" Value="#121212"/>
+								<Setter Property="Template">
 									<Setter.Value>
-										<materialDesign:PackIcon Kind="Play" Width="24" Height="24" Foreground="White" />
+										<ControlTemplate TargetType="Button">
+											<Border Background="{TemplateBinding Background}" 
+                                            CornerRadius="24"
+                                            Padding="8">
+												<ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+											</Border>
+										</ControlTemplate>
 									</Setter.Value>
 								</Setter>
-								<Style.Triggers>
-									<DataTrigger Binding="{Binding PlayerService.IsPlaying}" Value="True">
-										<Setter Property="Content">
-											<Setter.Value>
-												<materialDesign:PackIcon Kind="Pause" Width="24" Height="24" Foreground="White" />
-											</Setter.Value>
-										</Setter>
-									</DataTrigger>
-								</Style.Triggers>
 							</Style>
 						</Button.Style>
+						<materialDesign:PackIcon Kind="{Binding PlayerService.IsPlaying, Converter={StaticResource PlayPauseIconConverter}}"
+                                         Foreground="#121212"
+                                         Width="20" Height="20"/>
 					</Button>
-					<Button Command="{Binding NextCommand}" Margin="5">
-						<materialDesign:PackIcon Kind="SkipNext" Width="24" Height="24" Foreground="White" />
+
+					<Button Command="{Binding NextCommand}" 
+                    Width="49" Height="44"
+                    Background="Transparent" BorderThickness="0"
+                    Margin="0,0,12,0">
+						<materialDesign:PackIcon Kind="SkipNext" 
+                                         Foreground="White" 
+                                         Width="24" Height="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
 					</Button>
+
 					<Button x:Name="ShuffleButton"
-        Width="60"
-        Height="40"
-        Background="Transparent"
-        BorderBrush="{x:Null}"
-        Click="ShuffleButton_Click"
-        ToolTip="Перемешать треки">
+                    Width="49" Height="44"
+                    Background="Transparent" BorderThickness="0"
+                    Click="ShuffleButton_Click"
+                    ToolTip="Перемешать треки">
 						<materialDesign:PackIcon x:Name="ShuffleIcon"
-                             Kind="Shuffle"
-                             Foreground="White"
-                             Width="28"
-                             Height="28"/>
+                                         Kind="Shuffle"
+                                         Foreground="{Binding PlayerService.IsShuffleEnabled, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#1DB954'}"
+                                         Width="20" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
 					</Button>
-					<TextBlock Margin="5" VerticalAlignment="Center" Foreground="White" FontSize="14">
-						<TextBlock.Text>
-							<MultiBinding Converter="{StaticResource SecondsToTimeConverter}">
-								<Binding Path="PlayerService.PositionInSeconds" />
-								<Binding Path="PlayerService.DurationInSeconds" />
-							</MultiBinding>
-						</TextBlock.Text>
-					</TextBlock>
-					<Slider x:Name="ProgressSlider" Value="{Binding PlayerService.PositionInSeconds, Mode=TwoWay}"
-                            Minimum="0" Maximum="{Binding PlayerService.DurationInSeconds}"
-                            Width="360" Margin="5" VerticalAlignment="Center" MouseMove="ProgressSlider_MouseMove"/>
-					<ToggleButton 
+
+					<!-- Индикатор времени -->
+					<TextBlock Margin="16,0,8,0" VerticalAlignment="Center" 
+                       Foreground="#AAAAAA" FontSize="12" 
+                       Text="{Binding PlayerService.PositionInSeconds, Converter={StaticResource SecondsToTimeStringConverter}}"/>
+
+					<!-- Прогресс-бар -->
+					<Slider x:Name="ProgressSlider" MouseMove="ProgressSlider_MouseMove"
+                    Value="{Binding PlayerService.PositionInSeconds, Mode=TwoWay}"
+                    Minimum="0" 
+                    Maximum="{Binding PlayerService.DurationInSeconds}"
+                    Width="280" 
+                    Margin="0,0,8,0"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource MediaPlayerSliderStyle}"/>
+
+					<!-- Кнопка избранного -->
+					<Button 
     x:Name="BottomFavoriteButton"
-    Width="40"
-    Height="40"
-    FontSize="28"
-    Content="{Binding PlayerService.CurrentSong.IsFavoriteLocal, 
-                      Converter={StaticResource FavoriteIconConverter}}"
-    Foreground="{Binding PlayerService.CurrentSong.IsFavoriteLocal, 
-                      Converter={StaticResource FavoriteColorConverter}}"
-    IsChecked="{Binding PlayerService.CurrentSong.IsFavoriteLocal, Mode=OneWay}"
+    Width="51" Height="46"
     Background="Transparent"
     BorderThickness="0"
+    Cursor="Hand"
+    Margin="10"
     Command="{Binding ToggleFavoriteCommand}"
-    CommandParameter="{Binding PlayerService.CurrentSong}" />
-				</StackPanel>
-				
-				<StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="10">
-					<TextBlock Text="{Binding PlayerService.Volume, StringFormat={}{0:P0}, UpdateSourceTrigger=PropertyChanged}" 
-                       Foreground="White" VerticalAlignment="Center" Margin="5,0" MinWidth="30"/>
-					<materialDesign:PackIcon Kind="VolumeHigh" VerticalAlignment="Center" Margin="5" Foreground="White" Width="20" Height="20" />
-					<Slider Value="{Binding PlayerService.Volume, Mode=TwoWay}" 
-                            Minimum="0" Maximum="1" 
-                            Width="100" Margin="5" VerticalAlignment="Center"/>
+    CommandParameter="{Binding PlayerService.CurrentSong}">
+						<materialDesign:PackIcon Width="19" Height="19">
+							<materialDesign:PackIcon.Style>
+								<Style TargetType="materialDesign:PackIcon">
+									<!-- Значения по умолчанию -->
+									<Setter Property="Kind" Value="StarOutline"/>
+									<Setter Property="Foreground" Value="#666"/>
+									<!-- серая, когда нет трека -->
+
+									<Style.Triggers>
+										<!-- Есть трек, но не избранный -->
+										<DataTrigger Binding="{Binding PlayerService.CurrentSong}" Value="{x:Null}">
+											<Setter Property="Foreground" Value="#666"/>
+											<!-- нет трека -->
+											<Setter Property="Kind" Value="StarOutline"/>
+										</DataTrigger>
+
+										<!-- Есть трек, но не избранный -->
+										<DataTrigger Binding="{Binding PlayerService.CurrentSong.IsFavoriteLocal}" Value="False">
+											<Setter Property="Foreground" Value="#AAAAAA"/>
+											<!-- бледно-серая -->
+											<Setter Property="Kind" Value="StarOutline"/>
+										</DataTrigger>
+
+										<!-- Трек в избранном -->
+										<DataTrigger Binding="{Binding PlayerService.CurrentSong.IsFavoriteLocal}" Value="True">
+											<Setter Property="Foreground" Value="#1DB954"/>
+											<!-- зелёная -->
+											<Setter Property="Kind" Value="Star"/>
+										</DataTrigger>
+									</Style.Triggers>
+								</Style>
+							</materialDesign:PackIcon.Style>
+						</materialDesign:PackIcon>
+					</Button>
+
+					<!-- Право: Громкость -->
+					<StackPanel Grid.Column="2" Orientation="Horizontal" MouseMove="ProgressSlider_MouseMove"
+                    HorizontalAlignment="Right" VerticalAlignment="Center" 
+                    Margin="0,0,8,0">
+						<materialDesign:PackIcon Kind="VolumeHigh" 
+                                     Foreground="#AAAAAA" 
+                                     Width="19" Height="19" 
+                                     Margin="0,0,4,0"/>
+						<Slider Value="{Binding PlayerService.Volume, Mode=TwoWay}" 
+                    Minimum="0" Maximum="1" 
+                    Width="80" 
+                    Style="{StaticResource VolumeSliderStyle}"/>
+					</StackPanel>
 				</StackPanel>
 			</Grid>
 		</Grid>

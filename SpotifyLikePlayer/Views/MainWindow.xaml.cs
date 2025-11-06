@@ -251,9 +251,17 @@ namespace SpotifyLikePlayer
                 {
                     SongsListView.SelectedItem = match;
                     SongsListView.ScrollIntoView(match);
+
+                    foreach (var s in ViewModel.Songs)
+                    {
+                        s.IsPlaying = (s.SongId == song.SongId);
+                    }
+
+                    SongsListView.UpdateLayout();
                 }
+
+                ViewModel.CurrentSong = song;
             });
-            ViewModel.CurrentSong = song;
         }
 
         public void OnSongChangedExternally()
@@ -327,25 +335,37 @@ namespace SpotifyLikePlayer
 
             int albumId = selected.Album.AlbumId;
 
-            var allSongs = ViewModel._dbService.GetSongs() ?? new ObservableCollection<Song>();
+            var albumSongs = ViewModel._dbService
+                .GetSongs()
+                ?.Where(s => s.AlbumId == albumId)
+                .ToList() ?? new List<Song>();
 
-            var albumSongs = allSongs
-                .Where(s => s.AlbumId == albumId)
-                .ToList();
+            if (!albumSongs.Any())
+                return;
 
             UpdateSongsList(albumSongs);
             ViewModel.UpdateFavoriteFlags();
-            UpdateCurrentSongHighlight();
 
-            if (ViewModel.Songs != null && ViewModel.Songs.Any())
+            var currentSong = ViewModel.PlayerService.CurrentSong;
+            if (currentSong != null)
             {
-                var first = ViewModel.Songs.First();
-                SongsListView.SelectedItem = first;
-                SongsListView.ScrollIntoView(first);
+                var match = albumSongs.FirstOrDefault(s => s.SongId == currentSong.SongId);
+                if (match != null)
+                {
+                    SongsListView.SelectedItem = match;
+                    SongsListView.ScrollIntoView(match);
+                }
+                else
+                {
+                    var first = albumSongs.First();
+                    SongsListView.SelectedItem = first;
+                    SongsListView.ScrollIntoView(first);
+                }
             }
+            ViewModel.SelectedSong = selected;
+            UpdateMusicContextText("");
 
             HideSongInfo();
-            UpdateMusicContextText("");
 
             ViewModel.SyncSelectedSongWithCurrent();
             ViewModel.PlayerService.UpdatePlaylist(ViewModel.Songs);
@@ -751,20 +771,15 @@ namespace SpotifyLikePlayer
 
         private void ProgressSlider_MouseMove(object sender, MouseEventArgs e)
         {
-            if (sender is Slider slider)
+            if (e.LeftButton == MouseButtonState.Pressed)
             {
-                var position = e.GetPosition(slider);
-                double ratio = position.X / slider.ActualWidth;
-                double hoveredSeconds = slider.Maximum * Math.Max(0, Math.Min(1, ratio));
-                TimeSpan hoveredTime = TimeSpan.FromSeconds(hoveredSeconds);
-                string timeString = hoveredTime.ToString("mm\\:ss");
-
-                ToolTipService.SetToolTip(slider, timeString);
-                ToolTipService.SetIsEnabled(slider, true);
-                ToolTipService.SetPlacement(slider, PlacementMode.Relative);
-                ToolTipService.SetVerticalOffset(slider, -30);
-                ToolTipService.SetHorizontalOffset(slider, position.X - 20);
-                ToolTipService.SetShowDuration(slider, 10000);
+                var slider = sender as Slider;
+                if (slider != null)
+                {
+                    var position = e.GetPosition(slider);
+                    double value = (position.X / slider.ActualWidth) * (slider.Maximum - slider.Minimum) + slider.Minimum;
+                    slider.Value = Math.Max(slider.Minimum, Math.Min(slider.Maximum, value));
+                }
             }
         }
 

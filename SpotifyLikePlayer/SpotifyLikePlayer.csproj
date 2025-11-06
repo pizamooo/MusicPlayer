@@ -195,10 +195,20 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Converters\BoolToColorConverter.cs" />
     <Compile Include="Converters\BoolToVisibilityConverter.cs" />
     <Compile Include="Converters\FavoriteConverters.cs" />
+    <Compile Include="Converters\FavoriteVisibilityConverter.cs" />
+    <Compile Include="Converters\PlayPauseIconConverter.cs" />
+    <Compile Include="Converters\ProgressWidthConverter.cs" />
+    <Compile Include="Converters\RegularPlaylistVisibilityConverter.cs" />
+    <Compile Include="Converters\RepeatModeToColorConverter.cs" />
+    <Compile Include="Converters\RepeatModeToIconConverter.cs" />
     <Compile Include="Converters\SecondsToTimeConverter.cs" />
+    <Compile Include="Converters\SecondsToTimeStringConverter.cs" />
     <Compile Include="Converters\SongPlaylistTupleConverter.cs" />
+    <Compile Include="Converters\SubtractConverter.cs" />
+    <Compile Include="Converters\WidthToBoolConverter.cs" />
     <Compile Include="Views\ForgotPasswordWindow.xaml.cs">
       <DependentUpon>ForgotPasswordWindow.xaml</DependentUpon>
     </Compile>

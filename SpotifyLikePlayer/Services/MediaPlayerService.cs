@@ -203,10 +203,15 @@ namespace SpotifyLikePlayer.Services
             _positionInSeconds = 0;
             CurrentSong = song;
 
+            foreach (var s in _playlist)
+            {
+                s.IsPlaying = (s.SongId == song.SongId);
+                s.OnPropertyChanged(nameof(IsPlaying));
+            }
+
             OnPropertyChanged(nameof(CurrentSong));
             OnPropertyChanged(nameof(IsPlaying));
             OnPropertyChanged(nameof(IsPaused));
-
             SongChanged?.Invoke(song);
         }
 
@@ -256,7 +261,7 @@ namespace SpotifyLikePlayer.Services
                     if (_repeatMode == RepeatMode.All)
                         nextIndex = 0;
                     else
-                        return; // конец плейлиста — ничего не делаем
+                        return;
                 }
             }
 

@@ -14,13 +14,14 @@ namespace SpotifyLikePlayer.Converters
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             bool isFavorite = value is bool b && b;
-            return isFavorite ? Brushes.Gold : Brushes.White;
+
+            return isFavorite
+                ? new SolidColorBrush(Color.FromRgb(255, 215, 0)) // Тёплый золотой
+                : new SolidColorBrush(Color.FromRgb(130, 130, 130)); // Мягкий серый
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
-        }
+            => Binding.DoNothing;
     }
 
     public class FavoriteTooltipConverter : IValueConverter
@@ -55,15 +56,11 @@ namespace SpotifyLikePlayer.Converters
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            if (value is bool isFavorite && isFavorite)
-                return "";
-            return ""; 
+            return value is bool fav && fav ? "Star" : "Star";
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            return Binding.DoNothing;
-        }
+            => Binding.DoNothing;
     }
 }
 

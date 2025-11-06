@@ -15,6 +15,7 @@ namespace SpotifyLikePlayer
     /// </summary>
     public partial class App : Application
     {
+        public static LoginWindow CurrentLoginWindow { get; set; }
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);

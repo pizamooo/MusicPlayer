@@ -471,17 +471,43 @@ namespace SpotifyLikePlayer.Services
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
                 conn.Open();
-                string checkQuery = "SELECT AlbumId FROM Albums WHERE Title = @Title AND ArtistId = @ArtistId";
-                using (SqlCommand checkCmd = new SqlCommand(checkQuery, conn))
+
+                string checkQuery = "SELECT AlbumId, ReleaseYear FROM Albums WHERE Title = @Title AND ArtistId = @ArtistId";
+                using (var checkCmd = new SqlCommand(checkQuery, conn))
                 {
                     checkCmd.Parameters.AddWithValue("@Title", albumTitle);
                     checkCmd.Parameters.AddWithValue("@ArtistId", artistId);
-                    object id = checkCmd.ExecuteScalar();
-                    if (id != null) return (int)id;
+
+                    using (var reader = checkCmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            int albumId = (int)reader["AlbumId"];
+                            int existingYear = reader["ReleaseYear"] is DBNull ? 0 : (int)reader["ReleaseYear"];
+                            reader.Close();
+
+                            if (existingYear == 0 && releaseYear > 0)
+                            {
+                                string updateQuery = "UPDATE Albums SET ReleaseYear = @ReleaseYear WHERE AlbumId = @AlbumId";
+                                using (var updateCmd = new SqlCommand(updateQuery, conn))
+                                {
+                                    updateCmd.Parameters.AddWithValue("@ReleaseYear", releaseYear);
+                                    updateCmd.Parameters.AddWithValue("@AlbumId", albumId);
+                                    updateCmd.ExecuteNonQuery();
+                                }
+                            }
+
+                            return albumId;
+                        }
+                    }
                 }
 
-                string insertQuery = "INSERT INTO Albums (Title, ArtistId, ReleaseYear) OUTPUT INSERTED.AlbumId VALUES (@Title, @ArtistId, @ReleaseYear)";
-                using (SqlCommand insertCmd = new SqlCommand(insertQuery, conn))
+                string insertQuery = @"
+            INSERT INTO Albums (Title, ArtistId, ReleaseYear)
+            OUTPUT INSERTED.AlbumId
+            VALUES (@Title, @ArtistId, @ReleaseYear)";
+
+                using (var insertCmd = new SqlCommand(insertQuery, conn))
                 {
                     insertCmd.Parameters.AddWithValue("@Title", albumTitle);
                     insertCmd.Parameters.AddWithValue("@ArtistId", artistId);
@@ -496,17 +522,49 @@ namespace SpotifyLikePlayer.Services
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
                 conn.Open();
+
+                int releaseYear = 0;
+                string genre = song.Genre;
+                string albumTitle = song.Album?.Title;
+
+                try
+                {
+                    using (var tagFile = TagLib.File.Create(song.FilePath))
+                    {
+                        if (tagFile.Tag.Year != 0)
+                            releaseYear = (int)tagFile.Tag.Year;
+
+                        if (!string.IsNullOrWhiteSpace(tagFile.Tag.FirstGenre))
+                            genre = tagFile.Tag.FirstGenre;
+
+                        if (string.IsNullOrWhiteSpace(albumTitle))
+                            albumTitle = tagFile.Tag.Album;
+                    }
+                }
+                catch
+                {
+
+                }
+
+                if (string.IsNullOrWhiteSpace(albumTitle))
+                    albumTitle = "Single";
+
+                int artistId = AddOrGetArtist(song.Artist?.Name ?? "Unknown Artist");
+
+                int albumId = AddOrGetAlbum(albumTitle, artistId, releaseYear);
+
                 string query = @"
             INSERT INTO Songs (Title, ArtistId, AlbumId, FilePath, Duration, Genre)
             VALUES (@Title, @ArtistId, @AlbumId, @FilePath, @Duration, @Genre)";
+
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@Title", song.Title);
-                    cmd.Parameters.AddWithValue("@ArtistId", song.ArtistId);
-                    cmd.Parameters.AddWithValue("@AlbumId", song.AlbumId);
+                    cmd.Parameters.AddWithValue("@ArtistId", artistId);
+                    cmd.Parameters.AddWithValue("@AlbumId", albumId);
                     cmd.Parameters.AddWithValue("@FilePath", song.FilePath);
-                    cmd.Parameters.AddWithValue("@Duration",song.Duration.ToString("mm\\:ss"));  // TimeSpan как time
-                    cmd.Parameters.AddWithValue("@Genre", song.Genre);
+                    cmd.Parameters.AddWithValue("@Duration", song.Duration);
+                    cmd.Parameters.AddWithValue("@Genre", genre ?? "Unknown");
                     cmd.ExecuteNonQuery();
                 }
             }
@@ -530,7 +588,7 @@ namespace SpotifyLikePlayer.Services
                             image.CacheOption = BitmapCacheOption.OnLoad;
                             image.StreamSource = stream;
                             image.EndInit();
-                            image.Freeze();  // Для thread-safety в WPF
+                            image.Freeze();
                             return image;
                         }
                     }
@@ -538,15 +596,27 @@ namespace SpotifyLikePlayer.Services
             }
             catch (Exception)
             {
-                // Ошибка, вернём дефолт
+                
             }
             return GetDefaultCover();
         }
 
         public BitmapImage GetDefaultCover()
         {
-            var defaultImage = new BitmapImage(new Uri("C:\\Users\\dobry\\source\\repos\\SpotifyLikePlayer\\SpotifyLikePlayer\\music.png"));  // Путь к ресурсу
-            return defaultImage;
+            try
+            {
+                var image = new BitmapImage();
+                image.BeginInit();
+                image.CacheOption = BitmapCacheOption.OnLoad;
+                image.UriSource = new Uri("C:\\Users\\dobry\\source\\repos\\SpotifyLikePlayer\\SpotifyLikePlayer\\music.png", UriKind.Absolute);
+                image.EndInit();
+                image.Freeze();
+                return image;
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 }
