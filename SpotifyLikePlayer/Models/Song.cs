@@ -70,6 +70,20 @@ namespace SpotifyLikePlayer.Models
             }
         }
 
+        private bool _isInFavoritesPlaylist;
+        public bool IsInFavoritesPlaylist
+        {
+            get => _isInFavoritesPlaylist;
+            set
+            {
+                if (_isInFavoritesPlaylist != value)
+                {
+                    _isInFavoritesPlaylist = value;
+                    OnPropertyChanged(nameof(IsInFavoritesPlaylist));
+                }
+            }
+        }
+
         public event PropertyChangedEventHandler PropertyChanged;
         public void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {

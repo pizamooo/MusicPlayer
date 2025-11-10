@@ -10,6 +10,7 @@ using System.Windows.Threading;
 using SpotifyLikePlayer.Models;
 using System.Collections.ObjectModel;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
+using System.Diagnostics;
 
 namespace SpotifyLikePlayer.Services
 {
@@ -22,12 +23,23 @@ namespace SpotifyLikePlayer.Services
         private bool _isPaused;
         private double _positionInSeconds;
         private double _volume = 0.5;
+        private readonly Stopwatch _updateStopwatch = new Stopwatch();
 
         private readonly Random _random = new Random();
 
         public event Action<Song> SongChanged;
         public event PropertyChangedEventHandler PropertyChanged;
 
+        private bool _isDragging;
+        public bool IsDragging
+        {
+            get => _isDragging;
+            set
+            {
+                _isDragging = value;
+                OnPropertyChanged(nameof(IsDragging));
+            }
+        }
         public enum RepeatMode
         {
             None,   // обычный режим
@@ -63,10 +75,34 @@ namespace SpotifyLikePlayer.Services
             }
         }
 
+
         public MediaPlayerService()
         {
             _mediaPlayer.MediaEnded += OnMediaEnded;
             CompositionTarget.Rendering += OnRendering;
+            _updateStopwatch.Start();
+        }
+
+        public void PreviewPosition(double seconds)
+        {
+            _positionInSeconds = seconds;
+            OnPropertyChanged(nameof(PositionInSeconds));
+            OnPropertyChanged(nameof(DurationInSeconds));
+        }
+
+        public void Seek(double seconds)
+        {
+            if (_mediaPlayer.Source == null) return;
+
+            _positionInSeconds = seconds;
+            _mediaPlayer.Position = TimeSpan.FromSeconds(seconds);
+
+            OnPropertyChanged(nameof(PositionInSeconds));
+        }
+
+        public void RefreshCurrentSong()
+        {
+            OnPropertyChanged(nameof(CurrentSong));
         }
 
         public void UpdatePlaylist(ObservableCollection<Song> newPlaylist)
@@ -183,12 +219,15 @@ namespace SpotifyLikePlayer.Services
 
         private void OnRendering(object sender, EventArgs e)
         {
-            if (_mediaPlayer.Source != null && _isPlaying)
-            {
-                _positionInSeconds = _mediaPlayer.Position.TotalSeconds;
-                OnPropertyChanged(nameof(PositionInSeconds));
-                OnPropertyChanged(nameof(DurationInSeconds));
-            }
+            if (_mediaPlayer.Source == null || !_isPlaying) return;
+            if (_isDragging) return;
+            if (_updateStopwatch.ElapsedMilliseconds < 100) return;
+
+            _updateStopwatch.Restart();
+            double targetPos = _mediaPlayer.Position.TotalSeconds;
+            _positionInSeconds = _positionInSeconds * 0.7 + targetPos * 0.3;
+            OnPropertyChanged(nameof(PositionInSeconds));
+            OnPropertyChanged(nameof(DurationInSeconds));
         }
 
         public void Play(Song song, ObservableCollection<Song> playlist, int index)
@@ -347,6 +386,13 @@ namespace SpotifyLikePlayer.Services
             get => _positionInSeconds;
             set
             {
+                if (_isDragging)
+                {
+                    _positionInSeconds = value;
+                    OnPropertyChanged(nameof(PositionInSeconds));
+                    return;
+                }
+
                 if (_mediaPlayer.Source != null)
                 {
                     _positionInSeconds = value;

@@ -1,0 +1,129 @@
+﻿<Window x:Class="SpotifyLikePlayer.Views.SubmitMusicRequestWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+		xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:local="clr-namespace:SpotifyLikePlayer.Views"
+        mc:Ignorable="d"
+        Title="Добавить музыку" Height="700" Width="520"
+		WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize">
+	<Window.Resources>
+		<Style x:Key="FilledTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource MaterialDesignTextBox}">
+		<Setter Property="Background" Value="#333"/>
+		<Setter Property="Foreground" Value="White"/>
+		<Setter Property="BorderBrush" Value="#555"/>
+		<Setter Property="BorderThickness" Value="1"/>
+		<Setter Property="Padding" Value="12,10"/>
+		<Setter Property="materialDesign:TextFieldAssist.TextBoxViewMargin" Value="0"/>
+		<Setter Property="materialDesign:TextFieldAssist.UnderlineBrush" Value="Transparent"/>
+		</Style>
+	</Window.Resources>
+		<Border CornerRadius="12"
+            Background="#2b2b2b"
+            Padding="24"
+            Margin="20"
+            BorderBrush="#444"
+            BorderThickness="1">
+		<Border.Effect>
+			<DropShadowEffect BlurRadius="15" ShadowDepth="0" Color="Black" Opacity="0.6"/>
+		</Border.Effect>
+
+		<StackPanel Width="400" HorizontalAlignment="Center">
+			<TextBlock Text="Заявка на добавление музыки"
+                           FontSize="20"
+                           FontWeight="Bold"
+                           Foreground="White"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,24"/>
+
+			<!-- Выбор MP3 -->
+			<Button Content="Выбрать MP3-файл"
+                        Height="44"
+                        Background="#444"
+                        Foreground="White"
+                        BorderThickness="0"
+                        Margin="0,0,0,12"
+                        Click="BrowseMp3Button_Click"/>
+			<TextBlock x:Name="Mp3PathText"
+                           Text="Файл не выбран"
+                           Foreground="#AAAAAA"
+                           FontSize="13"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,18"/>
+
+			<TextBox x:Name="TitleBox"
+                         materialDesign:HintAssist.Hint="Название трека*"
+					 Foreground="White"
+					 FontSize="18"
+                         Style="{StaticResource MaterialDesignTextBox}"
+                         Margin="0,0,0,16"/>
+
+			<ComboBox x:Name="GenreComboBox"
+          materialDesign:HintAssist.Hint="Выберите жанр"
+          Style="{StaticResource MaterialDesignComboBox}"
+          SelectedItem="{Binding SelectedGenre, Mode=TwoWay}"
+          Margin="0,0,0,16" Foreground="White" FontSize="18">
+				<ComboBoxItem Content="Hip-Hop" />
+				<ComboBoxItem Content="Rock" />
+				<ComboBoxItem Content="Metal" />
+				<ComboBoxItem Content="Alt Metal" />
+				<ComboBoxItem Content="Pop" />
+			</ComboBox>
+
+			<TextBlock Text="Обложка"
+                           Foreground="#CCCCCC"
+                           FontSize="18"
+                           Margin="0,0,0,8"/>
+			<Border Width="120" Height="120"
+                        CornerRadius="6"
+                        Background="#333"
+                        HorizontalAlignment="Center"
+                        Margin="0,0,0,16">
+				<Image x:Name="CoverImage" Stretch="UniformToFill"/>
+			</Border>
+			<Button Content="Выбрать обложку"
+                        Height="36"
+                        Background="#3A3A3A"
+                        Foreground="White"
+                        BorderThickness="0"
+                        Click="BrowseCoverButton_Click"
+                        Margin="0,0,0,0"/>
+			<Button Content="Использовать стандартную обложку"
+        Height="36"
+        Background="#444"
+        Foreground="White"
+        BorderThickness="0"
+        Click="UseDefaultCover_Click"
+        Margin="0,8,0,24"/>
+
+			<Button Content="Отправить заявку"
+                        Height="44"
+                        Background="#1DB954"
+                        Foreground="White"
+                        FontWeight="SemiBold"
+                        BorderThickness="0"
+                        Click="SubmitButton_Click"
+                        Margin="0,0,0,12"/>
+			<Button Content="Отмена"
+                        Height="36"
+                        Background="#444"
+                        Foreground="White"
+                        BorderThickness="0"
+                        Click="CancelButton_Click"/>
+		</StackPanel>
+	</Border>
+	<Window.Triggers>
+		<EventTrigger RoutedEvent="Window.Loaded">
+			<BeginStoryboard>
+				<Storyboard>
+					<DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.3"/>
+				</Storyboard>
+			</BeginStoryboard>
+		</EventTrigger>
+	</Window.Triggers>
+</Window>

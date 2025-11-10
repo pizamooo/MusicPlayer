@@ -30,6 +30,7 @@ namespace SpotifyLikePlayer
     {
         private List<Song> _lastSearchResults = new List<Song>();
         private MainViewModel _vm;
+        private bool _isUserDraggingSlider = false;
 
         public MainViewModel ViewModel { get; set; }
         public MainWindow(MainViewModel vm)
@@ -46,6 +47,38 @@ namespace SpotifyLikePlayer
 
             ViewModel.PlayerService.SongChanged += OnSongChanged;
 
+        }
+
+        private void ProgressSlider_DragStarted(object sender, DragStartedEventArgs e)
+        {
+            var vm = DataContext as MainViewModel;
+            if (vm?.PlayerService == null) return;
+
+            _isUserDraggingSlider = true;
+            vm.PlayerService.IsDragging = true;
+        }
+
+        private void ProgressSlider_DragCompleted(object sender, DragCompletedEventArgs e)
+        {
+            var vm = DataContext as MainViewModel;
+            if (vm?.PlayerService == null) return;
+
+            _isUserDraggingSlider = false;
+            vm.PlayerService.IsDragging = false;
+
+            vm.PlayerService.Seek(ProgressSlider.Value);
+        }
+
+        private void ProgressSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (_isUserDraggingSlider)
+            {
+                var vm = DataContext as MainViewModel;
+                vm?.PlayerService.PreviewPosition(e.NewValue);
+
+                var binding = BindingOperations.GetBindingExpression(ProgressSlider, Slider.ValueProperty);
+                binding?.UpdateTarget();
+            }
         }
 
         private void UpdateCurrentSongHighlight()

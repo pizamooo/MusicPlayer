@@ -209,6 +209,11 @@
     <Compile Include="Converters\SongPlaylistTupleConverter.cs" />
     <Compile Include="Converters\SubtractConverter.cs" />
     <Compile Include="Converters\WidthToBoolConverter.cs" />
+    <Compile Include="Models\MusicSubmission.cs" />
+    <Compile Include="Services\MusicSubmissionService.cs" />
+    <Compile Include="Views\AdminPanelWindow.xaml.cs">
+      <DependentUpon>AdminPanelWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Views\ForgotPasswordWindow.xaml.cs">
       <DependentUpon>ForgotPasswordWindow.xaml</DependentUpon>
     </Compile>
@@ -224,6 +229,13 @@
     <Compile Include="Views\RegisterWindow.xaml.cs">
       <DependentUpon>RegisterWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Views\SubmitMusicRequestWindow.xaml.cs">
+      <DependentUpon>SubmitMusicRequestWindow.xaml</DependentUpon>
+    </Compile>
+    <Page Include="Views\AdminPanelWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Views\ForgotPasswordWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -249,6 +261,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Views\RegisterWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\SubmitMusicRequestWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

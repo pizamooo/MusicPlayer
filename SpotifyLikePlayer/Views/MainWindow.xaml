@@ -46,7 +46,7 @@
 									<RepeatButton Style="{StaticResource InvisibleRepeatButtonStyle}"/>
 								</Track.IncreaseRepeatButton>
 								<Track.Thumb>
-									<Thumb x:Name="PART_Thumb" Width="18" Height="18" Cursor="Hand" VerticalAlignment="Center">
+									<Thumb x:Name="PART_Thumb" Width="22" Height="22" Cursor="Hand" VerticalAlignment="Center">
 										<Thumb.Template>
 											<ControlTemplate TargetType="Thumb">
 												<Ellipse Fill="#1DB954" Stroke="#FFFFFF" StrokeThickness="1.5" Opacity="0.9"/>
@@ -91,7 +91,7 @@
 									<RepeatButton Style="{StaticResource InvisibleRepeatButtonStyle}"/>
 								</Track.IncreaseRepeatButton>
 								<Track.Thumb>
-									<Thumb x:Name="PART_Thumb" Width="14" Height="14" Cursor="Hand" VerticalAlignment="Center">
+									<Thumb x:Name="PART_Thumb" Width="16" Height="16" Cursor="Hand" VerticalAlignment="Center">
 										<Thumb.Template>
 											<ControlTemplate TargetType="Thumb">
 												<Ellipse Fill="#1DB954" Stroke="#FFFFFF" StrokeThickness="1" Opacity="0.85"/>
@@ -1258,52 +1258,52 @@
                        Text="{Binding PlayerService.PositionInSeconds, Converter={StaticResource SecondsToTimeStringConverter}}"/>
 
 					<!-- Прогресс-бар -->
-					<Slider x:Name="ProgressSlider" MouseMove="ProgressSlider_MouseMove"
-                    Value="{Binding PlayerService.PositionInSeconds, Mode=TwoWay}"
+					<Slider x:Name="ProgressSlider"
+                    Value="{Binding PlayerService.PositionInSeconds, Mode=TwoWay, UpdateSourceTrigger=Explicit}"
                     Minimum="0" 
                     Maximum="{Binding PlayerService.DurationInSeconds}"
                     Width="280" 
                     Margin="0,0,8,0"
                     VerticalAlignment="Center"
-                    Style="{StaticResource MediaPlayerSliderStyle}"/>
+					IsManipulationEnabled="True"
+                    Style="{StaticResource MediaPlayerSliderStyle}"
+					ValueChanged="ProgressSlider_ValueChanged"
+					Thumb.DragStarted="ProgressSlider_DragStarted"
+					Thumb.DragCompleted="ProgressSlider_DragCompleted"/>
 
 					<!-- Кнопка избранного -->
 					<Button 
     x:Name="BottomFavoriteButton"
-    Width="51" Height="46"
+    Width="54" Height="48"
     Background="Transparent"
     BorderThickness="0"
     Cursor="Hand"
     Margin="10"
     Command="{Binding ToggleFavoriteCommand}"
     CommandParameter="{Binding PlayerService.CurrentSong}">
-						<materialDesign:PackIcon Width="19" Height="19">
+						<materialDesign:PackIcon Width="26" Height="26" HorizontalAlignment="Center" VerticalAlignment="Center">
 							<materialDesign:PackIcon.Style>
 								<Style TargetType="materialDesign:PackIcon">
-									<!-- Значения по умолчанию -->
 									<Setter Property="Kind" Value="StarOutline"/>
-									<Setter Property="Foreground" Value="#666"/>
-									<!-- серая, когда нет трека -->
-
+									<Setter Property="Foreground" Value="#AAAAAA"/>
 									<Style.Triggers>
-										<!-- Есть трек, но не избранный -->
 										<DataTrigger Binding="{Binding PlayerService.CurrentSong}" Value="{x:Null}">
 											<Setter Property="Foreground" Value="#666"/>
-											<!-- нет трека -->
-											<Setter Property="Kind" Value="StarOutline"/>
 										</DataTrigger>
-
-										<!-- Есть трек, но не избранный -->
-										<DataTrigger Binding="{Binding PlayerService.CurrentSong.IsFavoriteLocal}" Value="False">
-											<Setter Property="Foreground" Value="#AAAAAA"/>
-											<!-- бледно-серая -->
-											<Setter Property="Kind" Value="StarOutline"/>
-										</DataTrigger>
-
-										<!-- Трек в избранном -->
+										<MultiDataTrigger>
+											<MultiDataTrigger.Conditions>
+												<Condition Binding="{Binding PlayerService.CurrentSong.IsFavoriteLocal}" Value="True"/>
+												<Condition Binding="{Binding PlayerService.CurrentSong.IsInFavoritesPlaylist}" Value="True"/>
+											</MultiDataTrigger.Conditions>
+											<Setter Property="Foreground" Value="#1DB954"/>
+											<Setter Property="Kind" Value="Star"/>
+										</MultiDataTrigger>
 										<DataTrigger Binding="{Binding PlayerService.CurrentSong.IsFavoriteLocal}" Value="True">
 											<Setter Property="Foreground" Value="#1DB954"/>
-											<!-- зелёная -->
+											<Setter Property="Kind" Value="Star"/>
+										</DataTrigger>
+										<DataTrigger Binding="{Binding PlayerService.CurrentSong.IsInFavoritesPlaylist}" Value="True">
+											<Setter Property="Foreground" Value="#1DB954"/>
 											<Setter Property="Kind" Value="Star"/>
 										</DataTrigger>
 									</Style.Triggers>

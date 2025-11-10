@@ -38,6 +38,20 @@ namespace SpotifyLikePlayer.Views
             LoadUserData();
         }
 
+        private void SubmitMusicRequest_Click(object sender, RoutedEventArgs e)
+        {
+            var submitWindow = new SubmitMusicRequestWindow(_currentUser);
+            submitWindow.Owner = this.Owner;
+            submitWindow.ShowDialog();
+        }
+
+        private void OpenAdminPanel_Click(object sender, RoutedEventArgs e)
+        {
+            var adminWindow = new AdminPanelWindow();
+            adminWindow.Owner = this.Owner;
+            adminWindow.ShowDialog();
+        }
+
         private BitmapImage DefaultAvatar()
         {
             try
@@ -250,7 +264,6 @@ namespace SpotifyLikePlayer.Views
         {
             var sb = new Storyboard();
 
-            // Плавное уменьшение масштаба (уходит "вглубь")
             var scaleTransform = new ScaleTransform(1.0, 1.0);
             this.RenderTransformOrigin = new Point(0.5, 0.5);
             this.RenderTransform = scaleTransform;
@@ -273,7 +286,6 @@ namespace SpotifyLikePlayer.Views
             Storyboard.SetTarget(scaleY, this);
             Storyboard.SetTargetProperty(scaleY, new PropertyPath("RenderTransform.(ScaleTransform.ScaleY)"));
 
-            // Плавное затухание окна
             var fadeOut = new DoubleAnimation
             {
                 To = 0.0,
@@ -283,7 +295,6 @@ namespace SpotifyLikePlayer.Views
             Storyboard.SetTarget(fadeOut, this);
             Storyboard.SetTargetProperty(fadeOut, new PropertyPath(Window.OpacityProperty));
 
-            // Добавляем анимации в Storyboard
             sb.Children.Add(scaleX);
             sb.Children.Add(scaleY);
             sb.Children.Add(fadeOut);
