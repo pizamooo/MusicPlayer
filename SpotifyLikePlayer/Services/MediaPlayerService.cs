@@ -219,15 +219,19 @@ namespace SpotifyLikePlayer.Services
 
         private void OnRendering(object sender, EventArgs e)
         {
-            if (_mediaPlayer.Source == null || !_isPlaying) return;
-            if (_isDragging) return;
-            if (_updateStopwatch.ElapsedMilliseconds < 100) return;
+            if (_mediaPlayer.Source == null || !_isPlaying)
+                return;
 
-            _updateStopwatch.Restart();
-            double targetPos = _mediaPlayer.Position.TotalSeconds;
-            _positionInSeconds = _positionInSeconds * 0.7 + targetPos * 0.3;
-            OnPropertyChanged(nameof(PositionInSeconds));
-            OnPropertyChanged(nameof(DurationInSeconds));
+            if (!_isDragging)
+            {
+                double pos = _mediaPlayer.Position.TotalSeconds;
+                if (Math.Abs(pos - _positionInSeconds) > 0.05)
+                {
+                    _positionInSeconds = pos;
+                    OnPropertyChanged(nameof(PositionInSeconds));
+                    OnPropertyChanged(nameof(DurationInSeconds));
+                }
+            }
         }
 
         public void Play(Song song, ObservableCollection<Song> playlist, int index)
@@ -381,23 +385,27 @@ namespace SpotifyLikePlayer.Services
                 }
             }
         }
+        private bool _isSeeking;
         public double PositionInSeconds
         {
             get => _positionInSeconds;
             set
             {
-                if (_isDragging)
-                {
-                    _positionInSeconds = value;
-                    OnPropertyChanged(nameof(PositionInSeconds));
+                if (_isSeeking)
                     return;
-                }
 
                 if (_mediaPlayer.Source != null)
                 {
-                    _positionInSeconds = value;
-                    _mediaPlayer.Position = TimeSpan.FromSeconds(value);
-                    OnPropertyChanged(nameof(PositionInSeconds));
+                    _isSeeking = true;
+                    try
+                    {
+                        _mediaPlayer.Position = TimeSpan.FromSeconds(value);
+                        _positionInSeconds = value;
+                    }
+                    finally
+                    {
+                        _isSeeking = false;
+                    }
                 }
             }
         }

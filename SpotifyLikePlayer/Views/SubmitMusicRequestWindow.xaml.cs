@@ -26,6 +26,7 @@ namespace SpotifyLikePlayer.Views
     {
         private readonly User _artist;
         private byte[] _coverBytes;
+        private byte[] _mp3Bytes;
         private string _selectedMp3Path;
         private int _detectedYear = DateTime.Now.Year;
         public SubmitMusicRequestWindow(User artist)
@@ -49,6 +50,8 @@ namespace SpotifyLikePlayer.Views
 
                 try
                 {
+                    _mp3Bytes = File.ReadAllBytes(_selectedMp3Path);
+
                     using (var file = TagLib.File.Create(_selectedMp3Path))
                     {
                         if (file.Tag.Year > 0)
@@ -57,7 +60,7 @@ namespace SpotifyLikePlayer.Views
                 }
                 catch (Exception ex)
                 {
-                    
+                    MessageBox.Show($"Ошибка чтения файла: {ex.Message}");
                 }
             }
         }
@@ -117,7 +120,7 @@ namespace SpotifyLikePlayer.Views
 
         private void SubmitButton_Click(object sender, RoutedEventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(_selectedMp3Path))
+            if (_mp3Bytes == null)
             {
                 MessageBox.Show("Выберите MP3-файл.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
@@ -133,18 +136,31 @@ namespace SpotifyLikePlayer.Views
                 MessageBox.Show("Выберите обложку или используйте стандартную.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            string selectedGenre = (GenreComboBox.SelectedItem as ComboBoxItem)?.Content?.ToString();
+            if (GenreComboBox.SelectedItem == null)
+            {
+                MessageBox.Show("Пожалуйста, выберите жанр.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (!ConfirmAuthorshipCheckBox.IsChecked == true)
+            {
+                MessageBox.Show("Подтвердите, что вы являетесь автором музыки.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
 
             try
             {
                 var service = new MusicSubmissionService();
+                string albumTitle = AlbumTitleBox.Text?.Trim();
+                string selectedGenre = (GenreComboBox.SelectedItem as ComboBoxItem)?.Content?.ToString();
                 service.SubmitMusicRequest(
                     _artist.UserId,
                     TitleBox.Text.Trim(),
-                    selectedGenre.ToString(),
-                    _selectedMp3Path,
+                    selectedGenre,
+                    _mp3Bytes,
                     _coverBytes,
-                    _detectedYear
+                    _detectedYear,
+                    albumTitle
                 );
                 MessageBox.Show("Заявка отправлена на модерацию!", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
                 DialogResult = true;

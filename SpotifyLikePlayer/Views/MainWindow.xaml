@@ -14,7 +14,6 @@
         DataContext="{Binding RelativeSource={RelativeSource Self}, Path=ViewModel}"
         WindowStartupLocation="CenterScreen" WindowState="Maximized" Topmost="False">
 	<Window.Resources>
-		<!-- Невидимый стиль для RepeatButton (для track клика) -->
 		<Style x:Key="InvisibleRepeatButtonStyle" TargetType="RepeatButton">
 			<Setter Property="Template">
 				<Setter.Value>
@@ -1252,7 +1251,6 @@
                                          Width="20" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
 					</Button>
 
-					<!-- Индикатор времени -->
 					<TextBlock Margin="16,0,8,0" VerticalAlignment="Center" 
                        Foreground="#AAAAAA" FontSize="12" 
                        Text="{Binding PlayerService.PositionInSeconds, Converter={StaticResource SecondsToTimeStringConverter}}"/>

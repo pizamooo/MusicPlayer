@@ -233,7 +233,6 @@ namespace SpotifyLikePlayer.Services
 
         public bool RegisterUser(string username, string password, string email)
         {
-            // Проверяем, существует ли пользователь с таким username или email
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
                 conn.Open();
@@ -245,11 +244,10 @@ namespace SpotifyLikePlayer.Services
                     int count = (int)checkCmd.ExecuteScalar();
                     if (count > 0)
                     {
-                        return false; // Пользователь уже существует
+                        return false;
                     }
                 }
 
-                // Если не существует, хэшируем пароль и вставляем
                 string hash = BCrypt.Net.BCrypt.HashPassword(password);
                 string insertQuery = "INSERT INTO Users (Username, PasswordHash, Email) VALUES (@Username, @Hash, @Email)";
                 using (SqlCommand insertCmd = new SqlCommand(insertQuery, conn))
@@ -259,7 +257,7 @@ namespace SpotifyLikePlayer.Services
                     insertCmd.Parameters.AddWithValue("@Email", email);
                     insertCmd.ExecuteNonQuery();
                 }
-                return true; // Регистрация успешна
+                return true;
             }
         }
 
@@ -320,7 +318,7 @@ namespace SpotifyLikePlayer.Services
                             }
                             else
                             {
-                                duration = TimeSpan.Zero; // Если NULL, устанавливаем 0
+                                duration = TimeSpan.Zero;
                             }
 
                             var song = new Song
@@ -335,7 +333,7 @@ namespace SpotifyLikePlayer.Services
                                 AlbumId = (int)reader["AlbumId"],
                                 Album = new Album { AlbumId = (int)reader["AlbumId"], Title = reader["AlbumTitle"].ToString(), ReleaseYear = (int)reader["ReleaseYear"] },
                             };
-                            song.CoverImage = GetCoverImage(song.FilePath);  // обложка
+                            song.CoverImage = GetCoverImage(song.FilePath);
                             songs.Add(song);
                         }
                     }
@@ -572,7 +570,7 @@ namespace SpotifyLikePlayer.Services
 
         public BitmapImage GetCoverImage(string filePath)
         {
-            if (!System.IO.File.Exists(filePath)) return GetDefaultCover();  // Дефолт, если файл не найден
+            if (!System.IO.File.Exists(filePath)) return GetDefaultCover();
 
             try
             {
