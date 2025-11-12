@@ -5,7 +5,9 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 		xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:local="clr-namespace:SpotifyLikePlayer.Views"
-        mc:Ignorable="d"
+		xmlns:conv="clr-namespace:SpotifyLikePlayer.Converters"
+		xmlns:services="clr-namespace:SpotifyLikePlayer.Services"
+		mc:Ignorable="d"
         Title="Профиль"
         WindowStartupLocation="CenterOwner"
         WindowStyle="None"
@@ -162,6 +164,13 @@
                     Cursor="Hand"
                     Click="SaveButton_Click"
                     Margin="0,0,0,6"/>
+			<Button Content="Отмена"
+                    Height="35"
+                    Background="#444"
+                    Foreground="White"
+                    BorderThickness="0"
+                    Cursor="Hand"
+                    Click="CancelButton_Click"/>
 
 			<Button Content="Добавить свою музыку"
         Height="40"
@@ -183,15 +192,7 @@
         Cursor="Hand"
         Click="OpenAdminPanel_Click"
         Margin="0,6,0,10"
-        Visibility="{Binding IsAdmin, Converter={StaticResource BoolToVisibilityConverter}}"/>
-
-			<Button Content="Отмена"
-                    Height="35"
-                    Background="#444"
-                    Foreground="White"
-                    BorderThickness="0"
-                    Cursor="Hand"
-                    Click="CancelButton_Click"/>
+        Visibility="{Binding IsAdmin, Converter={StaticResource AdminVisibility}}"/>
 		</StackPanel>
 	</Border>
 

@@ -39,7 +39,6 @@ namespace SpotifyLikePlayer
             _vm = vm;
             DataContext = ViewModel;
             InitializeComponent();
-            ProgressSlider.MouseMove += ProgressSlider_MouseMove;
             ToolTipService.SetInitialShowDelay(ProgressSlider, 0);
 
             SuggestionsList.PreviewMouseWheel += SuggestionsList_PreviewMouseWheel;

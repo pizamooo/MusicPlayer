@@ -34,7 +34,8 @@ namespace SpotifyLikePlayer.Views
         public ProfileWindow(User user)
         {
             InitializeComponent();
-            _currentUser = user ?? throw new ArgumentNullException(nameof(user));
+            _currentUser = user;
+            DataContext = _currentUser;
             LoadUserData();
         }
 
@@ -80,7 +81,7 @@ namespace SpotifyLikePlayer.Views
                 using (var conn = new SqlConnection(_connectionString))
                 {
                     conn.Open();
-                    string query = "SELECT Username, Email, ProfileImage FROM Users WHERE UserId = @UserId";
+                    string query = "SELECT Username, Email, ProfileImage, Role FROM Users WHERE UserId = @UserId";
 
                     using (var cmd = new SqlCommand(query, conn))
                     {
@@ -91,7 +92,8 @@ namespace SpotifyLikePlayer.Views
                             {
                                 _currentUser.Username = reader["Username"].ToString();
                                 _currentUser.Email = reader["Email"].ToString();
-                                _currentUser.ProfileImage = reader["ProfileImage"] as byte[]; 
+                                _currentUser.ProfileImage = reader["ProfileImage"] as byte[];
+                                _currentUser.Role = reader["Role"].ToString();
                             }
                         }
                     }

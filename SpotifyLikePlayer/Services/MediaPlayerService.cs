@@ -79,8 +79,15 @@ namespace SpotifyLikePlayer.Services
         public MediaPlayerService()
         {
             _mediaPlayer.MediaEnded += OnMediaEnded;
+            _mediaPlayer.MediaOpened += OnMediaOpened;
             CompositionTarget.Rendering += OnRendering;
             _updateStopwatch.Start();
+        }
+
+        private void OnMediaOpened(object sender, EventArgs e)
+        {
+            OnPropertyChanged(nameof(DurationInSeconds));
+            OnPropertyChanged(nameof(PositionInSeconds));
         }
 
         public void PreviewPosition(double seconds)
@@ -393,6 +400,13 @@ namespace SpotifyLikePlayer.Services
             {
                 if (_isSeeking)
                     return;
+
+                if (IsDragging)
+                {
+                    _positionInSeconds = value;
+                    OnPropertyChanged(nameof(PositionInSeconds));
+                    return;
+                }
 
                 if (_mediaPlayer.Source != null)
                 {

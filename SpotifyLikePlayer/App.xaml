@@ -27,6 +27,7 @@
 			<conv:RepeatModeToColorConverter x:Key="RepeatModeToColorConverter"/>
 			<conv:RepeatModeToIconConverter x:Key="RepeatModeToIconConverter"/>
 			<conv:SecondsToTimeStringConverter x:Key="SecondsToTimeStringConverter"/>
+			<conv:AdminVisibility x:Key="AdminVisibility"/>
 
 			<Style x:Key="FavoriteStarButton" TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
 				<Setter Property="FontSize" Value="26"/>

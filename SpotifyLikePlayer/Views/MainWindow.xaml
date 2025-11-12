@@ -1257,13 +1257,12 @@
 
 					<!-- Прогресс-бар -->
 					<Slider x:Name="ProgressSlider"
-                    Value="{Binding PlayerService.PositionInSeconds, Mode=TwoWay, UpdateSourceTrigger=Explicit}"
+                    Value="{Binding PlayerService.PositionInSeconds, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                     Minimum="0" 
                     Maximum="{Binding PlayerService.DurationInSeconds}"
                     Width="280" 
                     Margin="0,0,8,0"
                     VerticalAlignment="Center"
-					IsManipulationEnabled="True"
                     Style="{StaticResource MediaPlayerSliderStyle}"
 					ValueChanged="ProgressSlider_ValueChanged"
 					Thumb.DragStarted="ProgressSlider_DragStarted"

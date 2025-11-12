@@ -129,6 +129,7 @@
 			<Grid.RowDefinitions>
 				<RowDefinition Height="Auto"/>
 				<RowDefinition Height="*"/>
+				<RowDefinition Height="100"/>
 			</Grid.RowDefinitions>
 
 			<Button Content="×"
@@ -251,7 +252,7 @@
                                 Padding="12,6"
                                 Grid.Row="1"
                                 HorizontalAlignment="Left"
-                                Margin="0,10,0,0"
+                                Margin="0,5,0,5"
                                 Click="DeleteAllPending_Click"/>
 					</Grid>
 				</TabItem>
@@ -317,7 +318,7 @@
                                 Padding="12,6"
                                 Grid.Row="1"
                                 HorizontalAlignment="Left"
-                                Margin="0,10,0,0"
+                                Margin="0,5,0,5"
                                 Click="DeleteAllApproved_Click"/>
 					</Grid>
 				</TabItem>
@@ -383,91 +384,88 @@
                                 Padding="12,6"
                                 Grid.Row="1"
                                 HorizontalAlignment="Left"
-                                Margin="0,10,0,0"
+                                Margin="0,5,0,5"
                                 Click="DeleteAllRejected_Click"/>
 					</Grid>
 				</TabItem>
 			</TabControl>
-			<Border Grid.Row="1" Background="#181818" Height="80" Margin="0,353,0,42">
-				<Grid Margin="16,0">
+			<Border Grid.Row="2"
+        Background="#181818"
+        Height="100"
+        Padding="16,0"
+        BorderThickness="0"
+        CornerRadius="0">
+				<Grid>
 					<Grid.ColumnDefinitions>
 						<ColumnDefinition Width="Auto"/>
 						<ColumnDefinition Width="*"/>
 						<ColumnDefinition Width="Auto"/>
 					</Grid.ColumnDefinitions>
 
+					<!-- Левая часть (обложка и текст) -->
 					<StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
 						<Border Width="60" Height="60" CornerRadius="6" Background="#333" Margin="0,0,12,0">
 							<Image Source="{Binding CurrentTempSong.CoverImage, TargetNullValue={StaticResource DefaultCover}}" Stretch="UniformToFill"/>
 						</Border>
 						<StackPanel VerticalAlignment="Center">
 							<TextBlock Text="{Binding CurrentTempSong.Title, TargetNullValue='—'}" 
-                               Foreground="White" FontWeight="SemiBold" FontSize="16"/>
+                           Foreground="White" FontWeight="SemiBold" FontSize="16"/>
 							<TextBlock Text="{Binding CurrentTempSong.Artist.Name, TargetNullValue='—'}" 
-                               Foreground="#AAAAAA" FontSize="14"/>
+                           Foreground="#AAAAAA" FontSize="14"/>
 						</StackPanel>
 					</StackPanel>
 
-
-					<StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Width="537">
-						<Button x:Name="PrevButton" Width="40" Height="40" Background="Transparent" BorderThickness="0" Margin="0,0,12,0" Click="PrevButton_Click">
+					<!-- Центральная часть (управление треками) -->
+					<StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+						<Button x:Name="PrevButton" Width="40" Height="40" Background="Transparent" BorderThickness="0" Click="PrevButton_Click">
 							<materialDesign:PackIcon Kind="SkipPrevious" Foreground="White" Width="24" Height="24" VerticalAlignment="Center" HorizontalAlignment="Center"/>
 						</Button>
-						<Button x:Name="PlayPauseButton"
-        Width="52" Height="52"
-        Background="White"
-        BorderThickness="0"
-        Cursor="Hand"
-        Click="PlayPauseButton_Click"
-        Margin="0,0,12,0"
-        HorizontalAlignment="Center"
-        VerticalAlignment="Center">
 
+						<Button x:Name="PlayPauseButton"
+                    Width="56" Height="56"
+                    Background="White"
+                    BorderThickness="0"
+                    Cursor="Hand"
+                    Click="PlayPauseButton_Click">
 							<Grid>
 								<Path x:Name="PlayIcon"
-              Data="M0,0 L0,24 L20,12 Z"
-              Fill="#121212"
-              Stretch="Uniform"
-              HorizontalAlignment="Center"
-              VerticalAlignment="Center"
-              Width="20" Height="20"/>
-
-								<Grid x:Name="PauseIcon"
-              Visibility="Collapsed"
-              HorizontalAlignment="Center"
-              VerticalAlignment="Center">
-									<Rectangle Width="4" Height="18" Fill="#121212" Margin="0,0,9,0" Cursor=""/>
+                          Data="M0,0 L0,24 L20,12 Z"
+                          Fill="#121212"
+                          Stretch="Uniform"
+                          Width="20" Height="20"
+                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
+								<Grid x:Name="PauseIcon" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
+									<Rectangle Width="4" Height="18" Fill="#121212" Margin="0,0,9,0"/>
 									<Rectangle Width="4" Height="18" Fill="#121212" Margin="9,0,0,0"/>
 								</Grid>
 							</Grid>
 						</Button>
+
 						<Button x:Name="NextButton" Width="40" Height="40" Background="Transparent" BorderThickness="0" Click="NextButton_Click">
 							<materialDesign:PackIcon Kind="SkipNext" Foreground="White" Width="24" Height="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
 						</Button>
 
-						<Slider x:Name="ProgressSlider" 
-            Value="{Binding PlayerService.PositionInSeconds, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-            Minimum="0" 
-            Maximum="{Binding PlayerService.DurationInSeconds}" 
-            Width="200" 
-            Margin="16,0,16,0"
-            Style="{StaticResource MediaPlayerSliderStyle}" 
-            Height="27"
-            Thumb.DragStarted="ProgressSlider_DragStarted"
-            Thumb.DragCompleted="ProgressSlider_DragCompleted"
-            ValueChanged="ProgressSlider_ValueChanged"/>
-
-						<TextBlock Text="{Binding PlayerService.PositionInSeconds, Converter={StaticResource SecondsToTimeStringConverter}}" 
-               Foreground="#AAAAAA" FontSize="12" VerticalAlignment="Center"/>
+						<Slider x:Name="ProgressSlider"
+                    Value="{Binding PlayerService.PositionInSeconds, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    Minimum="0"
+                    Maximum="{Binding PlayerService.DurationInSeconds}"
+                    Width="240"
+                    Style="{StaticResource MediaPlayerSliderStyle}"
+                    Thumb.DragStarted="ProgressSlider_DragStarted"
+                    Thumb.DragCompleted="ProgressSlider_DragCompleted"
+                    ValueChanged="ProgressSlider_ValueChanged"/>
+						<TextBlock Text="{Binding PlayerService.PositionInSeconds, Converter={StaticResource SecondsToTimeStringConverter}}"
+                       Foreground="#AAAAAA" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"/>
 					</StackPanel>
 
-					<StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-						<materialDesign:PackIcon Kind="VolumeHigh" Foreground="#AAAAAA" Width="20" Height="19" Margin="0,0,4,0"/>
-						<Slider x:Name="VolumeSlider" 
-                        Value="{Binding PlayerService.Volume, Mode=TwoWay}" 
-                        Minimum="0" Maximum="1" 
-                        Width="80" 
-                        Style="{StaticResource VolumeSliderStyle}"/>
+					<!-- Правая часть (громкость) -->
+					<StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+						<materialDesign:PackIcon Kind="VolumeHigh" Foreground="#AAAAAA" Width="20" Height="20" Margin="0,0,6,0"/>
+						<Slider x:Name="VolumeSlider"
+                    Value="{Binding PlayerService.Volume, Mode=TwoWay}"
+                    Minimum="0" Maximum="1"
+                    Width="100"
+                    Style="{StaticResource VolumeSliderStyle}"/>
 					</StackPanel>
 				</Grid>
 			</Border>

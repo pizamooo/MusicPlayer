@@ -77,32 +77,20 @@ namespace SpotifyLikePlayer.Views
 
         private void PendingRequestsListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            var listBox = sender as ListBox;
-            var submission = listBox?.SelectedItem as MusicSubmission;
-            if (submission != null)
-            {
-                PlaySubmission(submission);
-            }
+            var submission = (sender as ListBox)?.SelectedItem as MusicSubmission;
+            if (submission == null) return;
+
+            PlaySubmission(submission);
         }
 
         private void ApprovedRequestsListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            var listBox = sender as ListBox;
-            var submission = listBox?.SelectedItem as MusicSubmission;
-            if (submission != null)
-            {
-                PlaySubmission(submission);
-            }
+            MessageBox.Show("Проигрывание доступно только для заявок в ожидании.","Недоступно", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void RejectedRequestsListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            var listBox = sender as ListBox;
-            var submission = listBox?.SelectedItem as MusicSubmission;
-            if (submission != null)
-            {
-                PlaySubmission(submission);
-            }
+            MessageBox.Show("Проигрывание доступно только для заявок в ожидании.","Недоступно", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void PlaySubmission(MusicSubmission submission)
@@ -248,8 +236,6 @@ namespace SpotifyLikePlayer.Views
 
                 TempPlaylist.Clear();
                 AddSubmissionsToPlaylist(pending);
-                AddSubmissionsToPlaylist(approved);
-                AddSubmissionsToPlaylist(rejected);
             }
             catch (Exception ex)
             {
